@@ -1,26 +1,21 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
+import Container from 'react-bootstrap/Container';
+import EventList from './EventList';
 
-function App() {
+export default function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+    <Container>
+      <header>
+        <h1 class="display-1"><a href="/">Eventer</a></h1>
       </header>
-    </div>
+      <main>
+        <Container>
+          <EventList/>
+        </Container>
+      </main>
+    </Container>
   );
 }
 
-export default App;

@@ -1,0 +1,23 @@
+version: '3.1'
+
+services:
+  database:
+    image: postgres:12.1
+    restart: always
+    environment:
+      POSTGRES_USER: eventer
+      POSTGRES_DB: eventer
+      POSTGRES_PASSWORD: eventer
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "5432:5432"
+
+#  email-server:
+#    image: catatnight/postfix
+#    restart: always
+#    environment:
+#      maildomain: mail.eventer.local
+#      smtp_user: eventer:eventer
+#    ports:
+#      - "25:25"

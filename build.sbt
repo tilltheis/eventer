@@ -10,5 +10,12 @@ libraryDependencies += "com.github.pureconfig" % "pureconfig_2.13" % "0.12.2"
 libraryDependencies += "io.circe" % "circe-core_2.13" % "0.13.0-M2"
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 libraryDependencies += "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.13.0"
+libraryDependencies += "io.getquill" %% "quill-jdbc" % "3.5.0"
+libraryDependencies += "org.postgresql" % "postgresql" % "42.2.9"
+libraryDependencies += "org.flywaydb" % "flyway-core" % "6.1.4"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0" % "test"
+
+javaOptions += "-Duser.timezone=UTC"
+
+fork := true
