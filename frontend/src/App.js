@@ -8,7 +8,7 @@ export default function App() {
   return (
     <Container>
       <header>
-        <h1 class="display-1"><a href="/">Eventer</a></h1>
+        <h1 className="display-1"><a href="/">Eventer</a></h1>
       </header>
       <main>
         <Container>
