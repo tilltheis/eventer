@@ -9,8 +9,8 @@ import zio.{RIO, Task, ZIO}
 class DbEventRepository extends EventRepository[DatabaseContext] {
   // This helper is useful because Scala doesn't allow `import db.databaseContext._` but only `import db._`.
   // This saves some boilerplate together with the code to access the `DatabaseContext`.
-  protected def withCtx[A](f: DatabaseContext => Task[A]): RIO[DatabaseContext, A] =
-    ZIO.accessM(f)
+  protected def withCtx[A](f: DatabaseContext.Service => Task[A]): RIO[DatabaseContext, A] =
+    ZIO.accessM(x => f(x.databaseContext))
 
   override val findEvents: RIO[DatabaseContext, Seq[Event]] = withCtx { ctx =>
     import ctx._

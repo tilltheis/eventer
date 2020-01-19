@@ -1,5 +1,6 @@
 package eventer.infrastructure
 
+import eventer.infrastructure
 import org.flywaydb.core.Flyway
 import zio.blocking.Blocking
 import zio.{RManaged, Task, ZIO, ZManaged}
@@ -10,19 +11,20 @@ trait DatabaseProvider {
 
 object DatabaseProvider {
   trait Service {
-    def database: RManaged[Blocking, DatabaseContext]
+    def database: RManaged[Blocking, DatabaseContext.Service]
   }
 
   trait WithoutMigration extends DatabaseProvider {
     override def databaseProvider: Service = new Service {
-      override def database: RManaged[Blocking, DatabaseContext] =
-        ZManaged.fromAutoCloseable(zio.blocking.blocking(ZIO.environment[Blocking].map(new DatabaseContext(_))))
+      override def database: RManaged[Blocking, DatabaseContext.Service] =
+        ZManaged.fromAutoCloseable(
+          zio.blocking.blocking(ZIO.environment[Blocking].map(new infrastructure.DatabaseContext.Service(_))))
     }
   }
 
   trait WithMigration extends WithoutMigration {
     override def databaseProvider: Service = new Service {
-      override def database: RManaged[Blocking, DatabaseContext] =
+      override def database: RManaged[Blocking, DatabaseContext.Service] =
         WithMigration.super.databaseProvider.database.mapM { db =>
           def migrate() = Flyway.configure().locations("classpath:migration").dataSource(db.dataSource).load().migrate()
           zio.blocking.blocking(Task(migrate())).map(_ => db)
