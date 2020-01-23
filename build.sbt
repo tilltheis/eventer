@@ -18,7 +18,10 @@ libraryDependencies += "io.getquill" %% "quill-jdbc" % "3.5.0"
 libraryDependencies += "org.postgresql" % "postgresql" % "42.2.9"
 libraryDependencies += "org.flywaydb" % "flyway-core" % "6.1.4"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0" % "test"
+libraryDependencies += "dev.zio" %% "zio-test" % "1.0.0-RC17" % "test"
+libraryDependencies += "dev.zio" %% "zio-test-sbt" % "1.0.0-RC17" % "test"
+
+testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 
 javaOptions += "-Duser.timezone=UTC"
 

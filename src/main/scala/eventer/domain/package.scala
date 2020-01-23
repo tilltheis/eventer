@@ -1,6 +1,6 @@
 package eventer
 
-import java.time.LocalDateTime
+import java.time.{LocalDateTime, ZonedDateTime}
 import java.util.UUID
 
 package object domain {
@@ -9,6 +9,7 @@ package object domain {
                          title: String,
                          description: String,
                          host: String,
+                         dateTime: ZonedDateTime,
                          createdAt: LocalDateTime,
                          updatedAt: LocalDateTime)
 }

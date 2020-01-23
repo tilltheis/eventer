@@ -14,7 +14,7 @@ object DatabaseProvider {
     def database: RManaged[Blocking, DatabaseContext]
   }
 
-  trait WithoutMigration extends DatabaseProvider {
+  trait Simple extends DatabaseProvider {
     override def databaseProvider: Service = new Service {
       override def database: RManaged[Blocking, DatabaseContext] =
         ZManaged
@@ -28,7 +28,7 @@ object DatabaseProvider {
     }
   }
 
-  trait WithMigration extends WithoutMigration {
+  trait WithMigration extends Simple {
     override def databaseProvider: Service = new Service {
       override def database: RManaged[Blocking, DatabaseContext] =
         WithMigration.super.databaseProvider.database.mapM { db =>

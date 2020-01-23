@@ -48,7 +48,7 @@ export default class EventList extends React.Component {
           </thead>
           <tbody>
             {items.map(item => (
-              <tr key={item.id}><td><a href={"/events/" + item.id}>✎</a></td><td>{item.title}</td><td>{item.host}</td><td>{item.createdAt}</td><td>Guests...</td><td>{item.description}</td></tr>
+              <tr key={item.id}><td><a href={"/events/" + item.id}>✎</a></td><td>{item.title}</td><td>{item.host}</td><td>{item.dateTime}</td><td>Guests...</td><td>{item.description}</td></tr>
             ))}
           </tbody>
         </table>

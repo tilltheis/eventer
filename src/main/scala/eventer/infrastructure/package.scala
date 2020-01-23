@@ -1,0 +1,38 @@
+package eventer
+
+import java.time.{Instant, LocalDateTime, ZoneId, ZonedDateTime}
+
+import eventer.domain.{Event, EventId}
+
+package object infrastructure {
+  final case class DbEvent(id: EventId,
+                           title: String,
+                           description: String,
+                           host: String,
+                           instant: Instant,
+                           zoneId: ZoneId,
+                           createdAt: LocalDateTime,
+                           updatedAt: LocalDateTime) {
+    val toEvent: Event = Event(
+      id = id,
+      title = title,
+      description = description,
+      host = host,
+      dateTime = ZonedDateTime.ofInstant(instant, zoneId),
+      createdAt = createdAt,
+      updatedAt = updatedAt
+    )
+  }
+  object DbEvent {
+    def fromEvent(event: Event): DbEvent = DbEvent(
+      id = event.id,
+      title = event.title,
+      description = event.description,
+      host = event.host,
+      instant = event.dateTime.toInstant,
+      zoneId = event.dateTime.getZone,
+      createdAt = event.createdAt,
+      updatedAt = event.updatedAt
+    )
+  }
+}
