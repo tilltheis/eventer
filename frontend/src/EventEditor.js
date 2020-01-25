@@ -1,16 +1,32 @@
 import React from 'react';
+import 'react-widgets/dist/css/react-widgets.css';
+import DateTimePicker from 'react-widgets/lib/DateTimePicker';
+import DropdownList from 'react-widgets/lib/DropdownList'
+import dateFnsLocalizer from 'react-widgets-date-fns';
+import { format } from 'date-fns-tz';
+import { listTimeZones } from 'timezone-support';
 
-export default class EventList extends React.Component {
+dateFnsLocalizer();
+
+const defaultTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+const dropdownTimeZones = listTimeZones().map(tz => ({ timeZone: tz, humanTimeZone: tz.replace('_', ' ')}))
+
+export default class EventEditor extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      'title': '',
-      'date': '',
-      'time': '',
-      'description': ''
+      id: props.generateUuid(),
+
+      title: '',
+      dateTime: '',
+      timeZone: defaultTimeZone,
+      description: ''
     };
 
     this.handleInputChange = this.handleInputChange.bind(this);
+    this.handleDateTimeChange = this.handleDateTimeChange.bind(this);
+    this.handleTimeZoneChange = this.handleTimeZoneChange.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
   }
 
   handleInputChange(event) {
@@ -23,25 +39,73 @@ export default class EventList extends React.Component {
     });
   }
 
+  handleTimeZoneChange(dropdownTimeZone) {
+    this.setState({
+      timeZone: dropdownTimeZone.timeZone
+    })
+  }
+
+  handleDateTimeChange(dateTime) {
+    this.setState({
+      dateTime
+    })
+  }
+
+  handleSubmit(event) {
+    event.preventDefault();
+
+    fetch('/events', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: this.state.id,
+        title: this.state.title,
+        description: this.state.description,
+        dateTime: format(this.state.dateTime, "yyyy-MM-dd'T'HH:mmXXX", { timeZone: this.state.timeZone, convertTimeZone: false }) + '[' + this.state.timeZone + ']'
+      })
+    })
+      .then(res => res.json())
+      .then(
+        (result) => {
+          this.setState({
+            isLoaded: true,
+            items: result
+          });
+        },
+        (error) => {
+          this.setState({
+            isLoaded: true,
+            error
+          });
+        }
+      )
+  }
+
+  componentDidMount() {
+    // the DropdownList doesn't let us customize the input component (and interpets the given `id` prop as name...)
+    const input = document.querySelector('#timeZone_input input')
+    input.id = 'timeZone';
+    input.required = "required";
+  }
+
   render() {
     return (
       <>
         <h2>Creating Event</h2>
-        <form method="post">
+        <form method="post" onSubmit={this.handleSubmit}>
           <div className="form-group">
             <label htmlFor="title">Title</label>
             <input className="form-control" id="title" name="title" value={this.state.title} onChange={this.handleInputChange} required />
           </div>
-
+          
           <div className="form-row align-items-center form-group">
             <div className="col">
-              <label htmlFor="date">Date</label>
-              <input className="form-control" id="date" name="date" type="date" value={this.state.date} onChange={this.handleInputChange} required />
+              <label htmlFor="dateTime_input">Date &amp; Time</label>
+              <DateTimePicker id="dateTime" name="dateTime" onChange={this.handleDateTimeChange} inputProps={{required:"requried"}} />
             </div>
 
             <div className="col">
-              <label htmlFor="time">Time</label>
-              <input className="form-control" id="time" name="time" type="time" value={this.state.time} onChange={this.handleInputChange} required />
+              <label htmlFor="timeZone">Time Zone</label>
+              <DropdownList id="timeZone" name="timeZone" onChange={this.handleTimeZoneChange} data={dropdownTimeZones} textField='humanTimeZone' valueField='timeZone' filter='contains' defaultValue={Intl.DateTimeFormat().resolvedOptions().timeZone} required="" />
             </div>
           </div>
 
@@ -72,7 +136,11 @@ export default class EventList extends React.Component {
             <label htmlFor="description">Description</label>
             <textarea className="form-control" id="description" name="description" value={this.state.description} onChange={this.handleInputChange} />
           </div>
-          <input className="btn btn-primary" type="submit" value="Create Event" />
+
+          <input type="text" id="hiddenDateTime" name="hidden" value={this.state.dateTime} style={{display: 'none'}} required readOnly />
+          <input type="text" id="hiddenTimeZone" name="hidden" value={this.state.timeZone} style={{display: 'none'}} required readOnly />
+
+          <input id="createEvent" className="btn btn-primary" type="submit" value="Create Event" />
         </form>
       </>
     );

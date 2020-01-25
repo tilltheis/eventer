@@ -10,6 +10,7 @@ import {
   Route,
   Link
 } from "react-router-dom";
+import uuid from 'uuid';
 
 export default function App() {
   return (
@@ -24,7 +25,7 @@ export default function App() {
 
             <Switch>
               <Route path="/events/new">
-                <EventEditor/>
+                <EventEditor generateUuid={uuid.v4}/>
               </Route>
               <Route path="/">
                 <EventList/>
