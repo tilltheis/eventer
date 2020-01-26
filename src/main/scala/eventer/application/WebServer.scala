@@ -10,19 +10,17 @@ import zio.clock.Clock
 import zio.{RIO, ZIO}
 
 class WebServer[R](eventRepository: EventRepository[R]) {
-  type IO[A] = RIO[R with Clock, A]
-
-  private[application] val routes: HttpApp[IO] = {
+  private[application] def routes[R0 <: R]: HttpApp[({ type T[A] = RIO[R0, A] })#T] = {
     import org.http4s.circe._
     import org.http4s.dsl.Http4sDsl
     import zio.interop.catz._
 
-    val codecs = new Codecs[IO]
+    val codecs = new Codecs[({ type T[A] = RIO[R0, A] })#T]
     import codecs._
 
-    val dsl = Http4sDsl[IO]
+    val dsl = Http4sDsl[({ type T[A] = RIO[R0, A] })#T]
     import dsl._
-    val routes = HttpRoutes.of[IO] {
+    val routes = HttpRoutes.of[({ type T[A] = RIO[R0, A] })#T] {
       case GET -> Root / "events" =>
         eventRepository.findAll.flatMap(events => { Ok(events) })
 
@@ -37,7 +35,8 @@ class WebServer[R](eventRepository: EventRepository[R]) {
     routes.orNotFound
   }
 
-  val serve: IO[Unit] = {
+  val serve: RIO[R with Clock, Unit] = {
+    type IO[A] = RIO[R with Clock, A]
     import zio.interop.catz._
     ZIO.runtime[R with Clock].flatMap { implicit clock =>
       BlazeServerBuilder[IO]
