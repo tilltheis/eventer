@@ -2,6 +2,7 @@ package eventer.infrastructure
 
 import java.util.UUID
 
+import eventer.DatabaseSpec
 import eventer.domain.{EventId, TestData}
 import zio.test.Assertion._
 import zio.test._
@@ -10,7 +11,7 @@ object DbEventRepositorySpec {
   val repository = new DbEventRepository()
   val otherId = EventId(UUID.fromString("b10c8d00-659e-4d2a-aa3b-0aea3d60c2ca"))
 
-  val spec = suite("DbEventRepository")(
+  val spec: DatabaseSpec = suite("DbEventRepository")(
     suite("findAll")(
       testM("returns all events from the DB") {
         for {

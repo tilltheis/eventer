@@ -15,7 +15,7 @@ object ConfigProvider {
 
   trait Live extends ConfigProvider {
     override def configProvider: Service = new Service {
-      override def config: Task[Config] = {
+      override val config: Task[Config] = {
         import pureconfig.generic.auto._
         Task.effect(ConfigSource.default.at("eventer").loadOrThrow[Config])
       }

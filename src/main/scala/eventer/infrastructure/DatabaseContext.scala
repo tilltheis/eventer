@@ -4,7 +4,7 @@ import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
 
 import eventer.infrastructure.DatabaseContext.Service
 import io.getquill.{PostgresJdbcContext, SnakeCase}
-import zio.Task
+import zio.RIO
 import zio.blocking.Blocking
 
 trait DatabaseContext {
@@ -13,7 +13,7 @@ trait DatabaseContext {
 
 object DatabaseContext {
 
-  class Service(blocking: Blocking) extends PostgresJdbcContext[SnakeCase](SnakeCase, "quill") {
+  abstract class Service(quillConfigKey: String) extends PostgresJdbcContext[SnakeCase](SnakeCase, quillConfigKey) {
     object schema {
       val event: Quoted[EntityQuery[DbEvent]] = quote(
         querySchema[DbEvent]("event", _.instant -> "date_time", _.zoneId -> "time_zone"))
@@ -25,11 +25,13 @@ object DatabaseContext {
     implicit val zoneIdEncoder: MappedEncoding[ZoneId, String] = MappedEncoding(_.getId)
     implicit val zoneIdDecoder: MappedEncoding[String, ZoneId] = MappedEncoding(ZoneId.of)
 
-    def performEffect[T](io: IO[T, _]): Task[Result[T]] =
-      zio.blocking.blocking(Task(performIO(io))).provide(blocking)
+    def performEffect[T](io: IO[T, _]): RIO[Blocking, Result[T]] =
+      zio.blocking.blocking(RIO(performIO(io)))
 
-    def performEffect_(io: IO[_, _]): Task[Result[Unit]] =
+    def performEffect_(io: IO[_, _]): RIO[Blocking, Result[Unit]] =
       performEffect(io).map(_ => ())
   }
+
+  class Live(override val databaseContext: Service) extends DatabaseContext
 
 }

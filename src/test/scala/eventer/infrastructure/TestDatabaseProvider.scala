@@ -6,7 +6,7 @@ import zio.blocking.Blocking
 import zio.{RManaged, Task}
 
 object TestDatabaseProvider {
-  trait WithDroppedSchemaAndMigration extends Simple {
+  class WithDroppedSchemaAndMigration(quillConfigKey: String) extends Simple(quillConfigKey) {
     override def databaseProvider: Service = new Service {
       override def database: RManaged[Blocking, DatabaseContext] =
         WithDroppedSchemaAndMigration.super.databaseProvider.database.mapM { db =>

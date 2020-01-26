@@ -1,9 +1,8 @@
 package eventer.infrastructure
 
-import eventer.infrastructure
 import org.flywaydb.core.Flyway
 import zio.blocking.Blocking
-import zio.{RManaged, Task, ZIO, ZManaged}
+import zio.{RManaged, Task, ZManaged}
 
 trait DatabaseProvider {
   def databaseProvider: DatabaseProvider.Service
@@ -14,23 +13,18 @@ object DatabaseProvider {
     def database: RManaged[Blocking, DatabaseContext]
   }
 
-  trait Simple extends DatabaseProvider {
+  class Simple(quillConfigKey: String) extends DatabaseProvider {
     override def databaseProvider: Service = new Service {
-      override def database: RManaged[Blocking, DatabaseContext] =
+      override val database: RManaged[Blocking, DatabaseContext] =
         ZManaged
-          .fromAutoCloseable(
-            zio.blocking.blocking(ZIO.environment[Blocking].map(new infrastructure.DatabaseContext.Service(_))))
-          .map { ctx =>
-            new DatabaseContext {
-              override def databaseContext: DatabaseContext.Service = ctx
-            }
-          }
+          .fromAutoCloseable(Task(new DatabaseContext.Service(quillConfigKey) {}))
+          .map(new DatabaseContext.Live(_))
     }
   }
 
-  trait WithMigration extends Simple {
-    override def databaseProvider: Service = new Service {
-      override def database: RManaged[Blocking, DatabaseContext] =
+  class WithMigration(quillConfigKey: String) extends Simple(quillConfigKey) {
+    override val databaseProvider: Service = new Service {
+      override val database: RManaged[Blocking, DatabaseContext] =
         WithMigration.super.databaseProvider.database.mapM { db =>
           def migrate() =
             Flyway
@@ -43,8 +37,4 @@ object DatabaseProvider {
         }
     }
   }
-
-  trait Live extends WithMigration
-
-  object Live extends Live
 }

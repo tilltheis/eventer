@@ -10,9 +10,7 @@ package object infrastructure {
                            description: String,
                            host: String,
                            instant: Instant,
-                           zoneId: ZoneId,
-                           createdAt: Instant,
-                           updatedAt: Instant) {
+                           zoneId: ZoneId) {
     val toEvent: Event = Event(
       id = id,
       title = title,
@@ -22,15 +20,13 @@ package object infrastructure {
     )
   }
   object DbEvent {
-    def fromEvent(event: Event, createdAt: Instant, updatedAt: Instant): DbEvent = DbEvent(
+    def fromEvent(event: Event): DbEvent = DbEvent(
       id = event.id,
       title = event.title,
       description = event.description,
       host = event.host,
       instant = event.dateTime.toInstant,
-      zoneId = event.dateTime.getZone,
-      createdAt = createdAt,
-      updatedAt = updatedAt
+      zoneId = event.dateTime.getZone
     )
   }
 }
