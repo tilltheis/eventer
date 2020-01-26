@@ -5,6 +5,6 @@ CREATE TABLE event (
   host TEXT NOT NULL, -- todo
   date_time TIMESTAMP WITH TIME ZONE NOT NULL,
   time_zone TEXT NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );

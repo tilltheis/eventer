@@ -1,16 +1,18 @@
 package eventer.infrastructure
 
-import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
-import java.util.UUID
+import java.time.Instant
 
 import eventer.domain.{Event, EventId, EventRepository}
+import zio.clock.Clock
 import zio.{RIO, Task, ZIO}
 
-class DbEventRepository extends EventRepository[DatabaseContext] {
+class DbEventRepository extends EventRepository[DatabaseContext with Clock] {
   // This helper is useful because Scala doesn't allow `import db.databaseContext._` but only `import db._`.
   // This saves some boilerplate together with the code to access the `DatabaseContext`.
-  protected def withCtx[A](f: DatabaseContext.Service => Task[A]): RIO[DatabaseContext, A] =
+  protected def withCtx[R <: DatabaseContext, E, A](f: DatabaseContext.Service => ZIO[R, E, A]): ZIO[R, E, A] =
     ZIO.accessM(x => f(x.databaseContext))
+
+  private val nowM: RIO[Clock, Instant] = ZIO.accessM[Clock](_.clock.currentDateTime).map(_.toInstant)
 
   override val findAll: RIO[DatabaseContext, Seq[Event]] = withCtx { ctx =>
     import ctx._
@@ -24,26 +26,12 @@ class DbEventRepository extends EventRepository[DatabaseContext] {
     performEffect(runIO(q)).map(_.headOption.map(_.toEvent))
   }
 
-  override def createEvent(event: Event): RIO[DatabaseContext, Unit] = withCtx { ctx =>
+  override def create(event: Event): RIO[DatabaseContext with Clock, Unit] = withCtx { ctx =>
     import ctx._
-    val q = quote(schema.event.insert(lift(DbEvent.fromEvent(event))))
-    performEffect_(runIO(q))
-  }
-
-  override def createTestEvents: RIO[DatabaseContext, Unit] = withCtx { ctx =>
-    import ctx._
-    val q = quote(
-      schema.event
-        .insert(lift(DbEvent.fromEvent(Event(
-          EventId(UUID.fromString("83e63830-2f40-4644-a55b-12409e660b33")),
-          "title",
-          "description",
-          "host",
-          ZonedDateTime.of(LocalDateTime.of(2019, 1, 19, 10, 3), ZoneId.of("Africa/Kinshasa")),
-          LocalDateTime.of(2019, 1, 19, 10, 3),
-          LocalDateTime.of(2019, 1, 19, 15, 59)
-        ))))
-        .onConflictIgnore)
-    performEffect_(runIO(q))
+    for {
+      now <- nowM
+      q = quote(schema.event.insert(lift(DbEvent.fromEvent(event, now, now))))
+      res <- performEffect_(runIO(q))
+    } yield res
   }
 }

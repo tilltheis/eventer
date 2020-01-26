@@ -16,6 +16,7 @@ export default class EventEditor extends React.Component {
     super(props);
     this.state = {
       id: props.generateUuid(),
+      host: 'host',
 
       title: '',
       dateTime: '',
@@ -54,30 +55,16 @@ export default class EventEditor extends React.Component {
   handleSubmit(event) {
     event.preventDefault();
 
-    fetch('/events', {
+    fetch(process.env.REACT_APP_API_URL + '/events', {
       method: 'POST',
       body: JSON.stringify({
         id: this.state.id,
+        host: this.state.host,
         title: this.state.title,
         description: this.state.description,
         dateTime: format(this.state.dateTime, "yyyy-MM-dd'T'HH:mmXXX", { timeZone: this.state.timeZone, convertTimeZone: false }) + '[' + this.state.timeZone + ']'
       })
-    })
-      .then(res => res.json())
-      .then(
-        (result) => {
-          this.setState({
-            isLoaded: true,
-            items: result
-          });
-        },
-        (error) => {
-          this.setState({
-            isLoaded: true,
-            error
-          });
-        }
-      )
+    });
   }
 
   componentDidMount() {

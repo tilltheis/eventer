@@ -14,8 +14,8 @@ object DbEventRepositorySpec {
     suite("findAll")(
       testM("returns all events from the DB") {
         for {
-          _ <- repository.createEvent(TestData.event)
-          _ <- repository.createEvent(TestData.event.copy(id = otherId))
+          _ <- repository.create(TestData.event)
+          _ <- repository.create(TestData.event.copy(id = otherId))
           foundEvents <- repository.findAll
         } yield assert(foundEvents, equalTo(Seq(TestData.event, TestData.event.copy(id = otherId))))
       },
@@ -26,7 +26,7 @@ object DbEventRepositorySpec {
     suite("findById")(
       testM("returns the event with the given id if it exists") {
         for {
-          _ <- repository.createEvent(TestData.event)
+          _ <- repository.create(TestData.event)
           foundEvent <- repository.findById(TestData.event.id)
         } yield assert(foundEvent, isSome(equalTo(TestData.event)))
       },
@@ -37,15 +37,15 @@ object DbEventRepositorySpec {
       },
       testM("returns nothing if no event with the given id exists") {
         for {
-          _ <- repository.createEvent(TestData.event)
+          _ <- repository.create(TestData.event)
           foundEvent <- repository.findById(otherId)
         } yield assert(foundEvent, isNone)
       },
     ),
-    suite("createEvent")(
+    suite("create")(
       testM("inserts the given event into the DB") {
         for {
-          _ <- repository.createEvent(TestData.event)
+          _ <- repository.create(TestData.event)
           foundEvent <- repository.findAll
         } yield assert(foundEvent, equalTo(Seq(TestData.event)))
       }

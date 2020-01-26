@@ -3,6 +3,7 @@ package eventer
 import eventer.application.{CodecsSpec, WebServerSpec}
 import eventer.infrastructure.{DatabaseContext, DatabaseProvider, DbEventRepositorySpec, TestDatabaseProvider}
 import zio.blocking.Blocking
+import zio.clock.Clock
 import zio.test._
 import zio.test.environment.TestEnvironment
 import zio.{Cause, ZManaged}
@@ -21,5 +22,13 @@ object EventerSpecs {
   type Specs = Seq[ZSpec[TestEnvironment, Throwable, String, Unit]]
   val unitTests: Specs = Seq(CodecsSpec.spec, WebServerSpec.spec)
   val databaseTests: Specs =
-    Seq(DbEventRepositorySpec.spec).map(_.provideManaged(managedDatabaseContext) @@ TestAspect.sequential)
+    Seq(DbEventRepositorySpec.spec)
+      .map(_.provideSomeManaged[Clock, TestFailure[Throwable]](managedDatabaseContext.flatMap { ctx =>
+        ZManaged.environment[Clock].map { envClock =>
+          new Clock with DatabaseContext {
+            override val clock: Clock.Service[Any] = envClock.clock
+            override def databaseContext: DatabaseContext.Service = ctx.databaseContext
+          }
+        }
+      }) @@ TestAspect.sequential)
 }

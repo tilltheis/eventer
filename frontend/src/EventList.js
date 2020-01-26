@@ -11,7 +11,7 @@ export default class EventList extends React.Component {
   }
 
   componentDidMount() {
-    fetch("http://localhost:8080/events")
+    fetch(process.env.REACT_APP_API_URL + '/events')
       .then(res => res.json())
       .then(
         (result) => {
@@ -26,7 +26,7 @@ export default class EventList extends React.Component {
             error
           });
         }
-      )
+      );
   }
 
   render() {

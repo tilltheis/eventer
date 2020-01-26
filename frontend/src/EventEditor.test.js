@@ -23,10 +23,12 @@ test('sends correct POST request to backend', () => {
   expect(container.querySelector('form').checkValidity()).toBe(true);
 
   window.fetch = jest.fn().mockImplementation((url, options) => {
-    expect(url).toBe('/events');
+    expect(url).toBe(process.env.REACT_APP_API_URL + '/events');
     expect(options.method).toBe('POST');
     const body = JSON.parse(options.body);
+    expect(Object.keys(body).sort()).toEqual(['id', 'host', 'title', 'dateTime', 'description'].sort());
     expect(body.id).toBe('test uuid');
+    expect(body.host).toBe('host'); // hardcoded for now
     expect(body.title).toBe('test title');
     expect(body.dateTime).toBe('2020-01-25T13:36+02:00[Africa/Johannesburg]');
     expect(body.description).toBe('test description');
