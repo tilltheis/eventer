@@ -40,7 +40,7 @@ class WebServer[R](eventRepository: EventRepository[R]) {
     import zio.interop.catz._
     ZIO.runtime[R with Clock].flatMap { implicit clock =>
       BlazeServerBuilder[IO]
-        .bindHttp(8080)
+        .bindHttp(8080, "0.0.0.0")
         .withHttpApp(CORS(routes))
         .serve
         .compile[IO, IO, ExitCode]
