@@ -33,7 +33,7 @@ export default function App() {
         </Navbar>
         </header>
         <main>
-          <Container>
+          <Container style={{ position: 'relative' }}>
             {toast && <Toast {...toast} />}
 
             <Link to="/events/new">Create New Event</Link>
