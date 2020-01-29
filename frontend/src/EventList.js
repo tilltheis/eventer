@@ -1,4 +1,5 @@
 import React from 'react';
+import Table from 'react-bootstrap/Table'
 
 export default class EventList extends React.Component {
   constructor(props) {
@@ -30,26 +31,35 @@ export default class EventList extends React.Component {
   }
 
   render() {
+    let Details = () => <></>;
+
     const { error, isLoaded, items } = this.state;
     if (error) {
-      return <div>Error: {error.message}</div>;
+      Details = () => <div>Error: {error.message}</div>;
     } else if (!isLoaded) {
-      return <div>Loading...</div>;
+      Details = () => <div>Loading...</div>;
     } else if (items.length === 0) {
-      return <div>There are no events.</div>;
+      Details = () => <div>There are no events.</div>;
     } else {
-      return (
-        <table>
+      Details = () => (
+        <Table responsive>
           <thead>
-            <tr><td></td><th>Title</th><th>Host</th><th>Date</th><th>Guests</th><th>Description</th></tr>
+            <tr><th></th><th>Title</th><th>Host</th><th>Date</th><th>Guests</th><th>Description</th></tr>
           </thead>
           <tbody>
             {items.map(item => (
               <tr key={item.id}><td><a href={"/events/" + item.id}>✎</a></td><td>{item.title}</td><td>{item.host}</td><td>{item.dateTime}</td><td>Guests...</td><td>{item.description}</td></tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       );
     }
+
+    return (
+      <>
+        <h2>My Events</h2>
+        <Details />
+      </>
+    )
   }
 };
