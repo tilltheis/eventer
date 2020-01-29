@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import Container from 'react-bootstrap/Container';
@@ -11,30 +11,34 @@ import {
   Link
 } from "react-router-dom";
 import uuid from 'uuid';
+import Toast from './Toast';
 
 export default function App() {
+  const [toast, setToast] = useState(undefined);
+
   return (
-    <Container>
-      <header>
-        <h1 className="display-1"><a href="/">Eventer</a></h1>
-      </header>
-      <main>
-        <Container>
-          <Router>
+    <Router>
+      <Container style={{ position: 'relative' }}>
+        <header>
+          <h1 className="display-1"><a href="/">Eventer</a></h1>
+        </header>
+        <main>
+          <Container>
+            {toast && <Toast {...toast} />}
+
             <Link to="/events/new">Create New Event</Link>
 
             <Switch>
               <Route path="/events/new">
-                <EventEditor generateUuid={uuid.v4}/>
+                <EventEditor generateUuid={uuid.v4} setToast={setToast} />
               </Route>
               <Route path="/">
-                <EventList/>
+                <EventList />
               </Route>
             </Switch>
-          </Router>
-        </Container>
-      </main>
-    </Container>
+          </Container>
+        </main>
+      </Container>
+    </Router>
   );
-}
-
+};

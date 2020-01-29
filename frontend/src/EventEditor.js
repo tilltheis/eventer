@@ -5,11 +5,12 @@ import DropdownList from 'react-widgets/lib/DropdownList'
 import dateFnsLocalizer from 'react-widgets-date-fns';
 import { format } from 'date-fns-tz';
 import { listTimeZones } from 'timezone-support';
+import { Redirect } from "react-router-dom";
 
 dateFnsLocalizer();
 
 const defaultTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-const dropdownTimeZones = listTimeZones().map(tz => ({ timeZone: tz, humanTimeZone: tz.replace('_', ' ')}))
+const dropdownTimeZones = listTimeZones().map(tz => ({ timeZone: tz, humanTimeZone: tz.replace('_', ' ') }))
 
 export default class EventEditor extends React.Component {
   constructor(props) {
@@ -21,7 +22,9 @@ export default class EventEditor extends React.Component {
       title: '',
       dateTime: '',
       timeZone: defaultTimeZone,
-      description: ''
+      description: '',
+
+      submitted: false
     };
 
     this.handleInputChange = this.handleInputChange.bind(this);
@@ -64,17 +67,28 @@ export default class EventEditor extends React.Component {
         description: this.state.description,
         dateTime: format(this.state.dateTime, "yyyy-MM-dd'T'HH:mmXXX", { timeZone: this.state.timeZone, convertTimeZone: false }) + '[' + this.state.timeZone + ']'
       })
+    }).then(() => {
+      this.setState({ submitted: true });
+      this.props.setToast({ header: this.state.title, body: 'Your event has been created.' });
     });
   }
 
   componentDidMount() {
-    // the DropdownList doesn't let us customize the input component (and interpets the given `id` prop as name...)
+    // the DropdownList doesn't let us customize the input component (and interprets the given `id` prop as name...)
     const input = document.querySelector('#timeZone_input input')
     input.id = 'timeZone';
     input.required = "required";
   }
 
   render() {
+    if (this.state.submitted) return this.renderSubmitted(); else return this.renderForm();
+  }
+
+  renderSubmitted() {
+    return <Redirect push to="/" />;
+  }
+
+  renderForm() {
     return (
       <>
         <h2>Creating Event</h2>
@@ -83,11 +97,11 @@ export default class EventEditor extends React.Component {
             <label htmlFor="title">Title</label>
             <input className="form-control" id="title" name="title" value={this.state.title} onChange={this.handleInputChange} required />
           </div>
-          
+
           <div className="form-row align-items-center form-group">
             <div className="col">
               <label htmlFor="dateTime_input">Date &amp; Time</label>
-              <DateTimePicker id="dateTime" name="dateTime" onChange={this.handleDateTimeChange} inputProps={{required:"requried"}} />
+              <DateTimePicker id="dateTime" name="dateTime" onChange={this.handleDateTimeChange} inputProps={{ required: "requried" }} />
             </div>
 
             <div className="col">
@@ -106,12 +120,12 @@ export default class EventEditor extends React.Component {
 
           <div className="form-row align-items-center form-group">
             <div className="col">
-                <label htmlFor="guestName">External Guest Name</label>
-                <input className="form-control" id="guestName" />
+              <label htmlFor="guestName">External Guest Name</label>
+              <input className="form-control" id="guestName" />
             </div>
             <div className="col">
-                <label htmlFor="guestEmail">External Guest Email</label>
-                <input className="form-control" id="guestEmail" type="email" />
+              <label htmlFor="guestEmail">External Guest Email</label>
+              <input className="form-control" id="guestEmail" type="email" />
             </div>
             <div className="col">
               <label>&nbsp;</label>
@@ -124,8 +138,8 @@ export default class EventEditor extends React.Component {
             <textarea className="form-control" id="description" name="description" value={this.state.description} onChange={this.handleInputChange} />
           </div>
 
-          <input type="text" id="hiddenDateTime" name="hidden" value={this.state.dateTime} style={{display: 'none'}} required readOnly />
-          <input type="text" id="hiddenTimeZone" name="hidden" value={this.state.timeZone} style={{display: 'none'}} required readOnly />
+          <input type="text" id="hiddenDateTime" name="hidden" value={this.state.dateTime} style={{ display: 'none' }} required readOnly />
+          <input type="text" id="hiddenTimeZone" name="hidden" value={this.state.timeZone} style={{ display: 'none' }} required readOnly />
 
           <input id="createEvent" className="btn btn-primary" type="submit" value="Create Event" />
         </form>
