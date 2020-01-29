@@ -12,15 +12,25 @@ import {
 } from "react-router-dom";
 import uuid from 'uuid';
 import Toast from './Toast';
+import Navbar from 'react-bootstrap/Navbar'
+import UserSession from './UserSession';
 
 export default function App() {
   const [toast, setToast] = useState(undefined);
 
   return (
     <Router>
-      <Container style={{ position: 'relative' }}>
+      <Container>
         <header>
-          <h1 className="display-1"><a href="/">Eventer</a></h1>
+        <Navbar bg="light">
+          <Navbar.Brand href="/">Eventer</Navbar.Brand>
+          <Navbar.Toggle />
+          <Navbar.Collapse className="justify-content-end">
+            <Navbar.Text>
+              <UserSession />
+            </Navbar.Text>
+          </Navbar.Collapse>
+        </Navbar>
         </header>
         <main>
           <Container>
