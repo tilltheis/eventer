@@ -24,7 +24,7 @@ function Logout() {
     <>
     Signed in as:{' '}
     <OverlayTrigger trigger="click" placement="bottom" overlay={LogoutPopover}>
-      <Link>Mark Otto</Link>
+      <Link to={'#'}>Mark Otto</Link>
     </OverlayTrigger>
     </>
   );
@@ -55,7 +55,7 @@ function LoginPopover(props) {
 function Login() {
   return (
     <OverlayTrigger trigger="click" placement="bottom" overlay={LoginPopover}>
-      <Link>Login</Link>
+      <Link to={'#'}>Login</Link>
     </OverlayTrigger>
   );
 }

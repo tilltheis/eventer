@@ -24,21 +24,26 @@ object Main extends zio.App with LazyLogging {
     }
   }
 
-  type ApplicationEnvironment = Clock with Blocking with DatabaseContext
+  type ApplicationEnvironment = Clock with Blocking with DatabaseContext with ConfigProvider
   val applicationEnvironment: RManaged[MainEnvironment, ApplicationEnvironment] = for {
     mainEnv <- ZManaged.environment[MainEnvironment]
     dbContext <- mainEnv.databaseProvider.database
   } yield
-    new Clock with Blocking with DatabaseContext {
+    new Clock with Blocking with DatabaseContext with ConfigProvider {
       override val clock: Clock.Service[Any] = mainEnv.clock
       override val blocking: Blocking.Service[Any] = mainEnv.blocking
       override def databaseContext: DatabaseContext.Service = dbContext.databaseContext
+      override def configProvider: ConfigProvider.Service = mainEnv.configProvider
     }
 
   val program: ZIO[MainEnvironment, Throwable, Unit] = {
     val eventRepo = new DbEventRepository()
     val webServer = new WebServer(eventRepo)
-    applicationEnvironment.use(webServer.serve.provide)
+    applicationEnvironment.use { appEnv =>
+      appEnv.configProvider.config.flatMap { config =>
+        webServer.serve(config.server.port).provide(appEnv)
+      }
+    }
   }
 
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] =

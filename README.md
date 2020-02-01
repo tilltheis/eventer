@@ -12,10 +12,13 @@ This is a playground to get to know [ZIO](https://zio.dev/) and [React](https://
 
 ## Run Locally
 
-Start the DB with `docker-compose up`.  
+Start the DB and reverse proxy (for SSL) with `docker-compose up`.  
 Start the backend with `sbt run`.  
 Start the frontend with `(cd frontend && npm start)`.  
-Navigate to [http://localhost:3000](http://localhost:3000).
+Navigate to [https://localhost:3000](https://localhost:3000).
+
+You might need to navigate to [https://localhost:9001](https://localhost:9001) once to accept the self-signed backend certificate.  
+If you're not using Docker Desktop you might need to uncomment `network_mode: host` in the `./docker-compose.yaml`.
 
 
 ## Test Locally

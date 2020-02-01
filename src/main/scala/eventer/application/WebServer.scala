@@ -35,12 +35,12 @@ class WebServer[R](eventRepository: EventRepository[R]) {
     routes.orNotFound
   }
 
-  val serve: RIO[R with Clock, Unit] = {
+  def serve(port: Int): RIO[R with Clock, Unit] = {
     type IO[A] = RIO[R with Clock, A]
     import zio.interop.catz._
     ZIO.runtime[R with Clock].flatMap { implicit clock =>
       BlazeServerBuilder[IO]
-        .bindHttp(8080, "0.0.0.0")
+        .bindHttp(port, "0.0.0.0")
         .withHttpApp(CORS(routes))
         .serve
         .compile[IO, IO, ExitCode]
