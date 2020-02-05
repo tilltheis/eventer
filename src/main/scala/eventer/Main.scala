@@ -1,13 +1,17 @@
 package eventer
 
+import java.util.UUID
+
 import com.typesafe.scalalogging.LazyLogging
 import eventer.application.WebServer
-import eventer.infrastructure.{ConfigProvider, DatabaseContext, DatabaseProvider, DbEventRepository}
+import eventer.domain.BlowfishCryptoHashing.BlowfishHash
+import eventer.domain.{BlowfishCryptoHashing, SessionService, SessionServiceImpl, User, UserId}
+import eventer.infrastructure.{ConfigProvider, DatabaseContext, DatabaseProvider, DbEventRepository, DbUserRepository}
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{RManaged, ZIO, ZManaged}
+import zio.{RIO, RManaged, UIO, ZIO, ZManaged}
 
-final case class ServerConfig(port: Int)
+final case class ServerConfig(port: Int, jwtSigningKey: String)
 final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
 final case class Config(server: ServerConfig, db: DbConfig)
 
@@ -37,11 +41,28 @@ object Main extends zio.App with LazyLogging {
     }
 
   val program: ZIO[MainEnvironment, Throwable, Unit] = {
-    val eventRepo = new DbEventRepository()
-    val webServer = new WebServer(eventRepo)
     applicationEnvironment.use { appEnv =>
       appEnv.configProvider.config.flatMap { config =>
-        webServer.serve(config.server.port).provide(appEnv)
+        val userRepository = new DbUserRepository[BlowfishHash](_.hash, BlowfishHash.unsafeFromHashString)
+        val eventRepository = new DbEventRepository()
+        val cryptoHashing = new BlowfishCryptoHashing()
+        val sessionService = new SessionServiceImpl[ApplicationEnvironment, BlowfishHash](userRepository,
+                                                                                          cryptoHashing,
+                                                                                          config.server.jwtSigningKey)
+        val webServer = new WebServer(eventRepository, sessionService)
+
+        for {
+          _ <- userRepository
+            .create(User(
+              UserId(UUID.fromString("6f31ccde-4321-4cc9-9056-6c3cbd550cba")),
+              "Till",
+              "example@example.org",
+              BlowfishHash.unsafeFromHashString("$2a$10$d.vQEHwPIqtSYWQOMtg7LuZgTOx1R/2sOLnqCUkpixkXJ1paUhEIm")
+            ))
+            .catchAll(_ => ZIO.unit) // catch duplicate insert exceptions
+            .provide(appEnv)
+          serving <- webServer.serve(config.server.port).provide(appEnv)
+        } yield serving
       }
     }
   }

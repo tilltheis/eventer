@@ -17,7 +17,7 @@ export default class EventEditor extends React.Component {
     super(props);
     this.state = {
       id: props.generateUuid(),
-      host: 'host',
+      hostId: '6f31ccde-4321-4cc9-9056-6c3cbd550cba',
 
       title: '',
       dateTime: '',
@@ -62,7 +62,7 @@ export default class EventEditor extends React.Component {
       method: 'POST',
       body: JSON.stringify({
         id: this.state.id,
-        host: this.state.host,
+        hostId: this.state.hostId,
         title: this.state.title,
         description: this.state.description,
         dateTime: format(this.state.dateTime, "yyyy-MM-dd'T'HH:mmXXX", { timeZone: this.state.timeZone, convertTimeZone: false }) + '[' + this.state.timeZone + ']'

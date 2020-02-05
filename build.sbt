@@ -17,6 +17,8 @@ libraryDependencies += "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.13.0
 libraryDependencies += "io.getquill" %% "quill-jdbc" % "3.5.0"
 libraryDependencies += "org.postgresql" % "postgresql" % "42.2.9"
 libraryDependencies += "org.flywaydb" % "flyway-core" % "6.1.4"
+libraryDependencies += "org.mindrot" % "jbcrypt" % "0.4"
+libraryDependencies += "com.pauldijou" %% "jwt-core" % "4.2.0"
 
 libraryDependencies += "dev.zio" %% "zio-test" % "1.0.0-RC17" % "test"
 libraryDependencies += "dev.zio" %% "zio-test-sbt" % "1.0.0-RC17" % "test"

@@ -5,21 +5,21 @@ import eventer.infrastructure.InMemoryEventRepository.State
 import zio.{RIO, Ref, UIO}
 
 class InMemoryEventRepository extends EventRepository[State] {
-  override def findAll: RIO[State, Seq[Event]] = RIO.accessM(_.stateRef.get)
+  override def findAll: RIO[State, Seq[Event]] = RIO.accessM(_.eventRepositoryStateRef.get)
   override def findById(id: EventId): RIO[State, Option[Event]] =
-    RIO.accessM[State](_.stateRef.get).map(_.find(_.id == id))
+    RIO.accessM[State](_.eventRepositoryStateRef.get).map(_.find(_.id == id))
   override def create(event: Event): RIO[State, Unit] =
-    RIO.accessM[State](_.stateRef.update(_.appended(event))).map(_ => ())
+    RIO.accessM[State](_.eventRepositoryStateRef.update(_.appended(event))).map(_ => ())
 }
 
 object InMemoryEventRepository {
   trait State {
-    def stateRef: Ref[Seq[Event]]
+    def eventRepositoryStateRef: Ref[Seq[Event]]
   }
 
   def makeState(state: Seq[Event]): UIO[State] = Ref.make(state).map { x =>
     new State {
-      override val stateRef: Ref[Seq[Event]] = x
+      override val eventRepositoryStateRef: Ref[Seq[Event]] = x
     }
   }
 

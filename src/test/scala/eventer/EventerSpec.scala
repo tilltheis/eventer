@@ -1,17 +1,27 @@
 package eventer
 
 import eventer.application.{CodecsSpec, WebServerSpec}
-import eventer.infrastructure.{DatabaseContext, DatabaseProvider, DbEventRepositorySpec, TestDatabaseProvider}
+import eventer.domain.{BlowfishCryptoHashingSpec, SessionServiceImplSpec}
+import eventer.infrastructure.{
+  DatabaseContext,
+  DatabaseProvider,
+  DbEventRepositorySpec,
+  DbUserRepositorySpec,
+  TestDatabaseProvider
+}
 import zio.blocking.Blocking
 import zio.test._
 import zio.{Cause, ZManaged}
 
 object EventerSpec
-    extends DefaultRunnableSpec(suite("Eventer")((EventerSpecs.unitSpecs ++ EventerSpecs.providedDatabaseSpecs): _*))
+    extends DefaultRunnableSpec(
+      suite("Eventer")(suite("Unit")(EventerSpecs.unitSpecs: _*),
+                       suite("Database")(EventerSpecs.providedDatabaseSpecs: _*) @@ TestAspect.sequential))
 
 object EventerSpecs {
-  val unitSpecs: Seq[UnitSpec] = Seq(CodecsSpec.spec, WebServerSpec.spec)
-  val databaseSpecs: Seq[DatabaseSpec] = Seq(DbEventRepositorySpec.spec)
+  val unitSpecs: Seq[UnitSpec] =
+    Seq(CodecsSpec.spec, WebServerSpec.spec, BlowfishCryptoHashingSpec.spec, SessionServiceImplSpec.spec)
+  val databaseSpecs: Seq[DatabaseSpec] = Seq(DbEventRepositorySpec.spec, DbUserRepositorySpec.spec)
 
   val managedDatabaseContext: ZManaged[Any, TestFailure.Runtime[Throwable], DatabaseContext] =
     ZManaged
@@ -28,5 +38,5 @@ object EventerSpecs {
           override def databaseContext: DatabaseContext.Service = ctx.databaseContext
         }
       }
-    }) @@ TestAspect.sequential)
+    }))
 }

@@ -19,7 +19,7 @@ object CodecsSpec {
     "id" -> TestData.event.id.id.toString.asJson,
     "title" -> TestData.event.title.asJson,
     "description" -> TestData.event.description.asJson,
-    "host" -> TestData.event.host.asJson,
+    "hostId" -> TestData.event.hostId.asJson,
     "dateTime" -> TestData.event.dateTime.format(DateTimeFormatter.ISO_ZONED_DATE_TIME).asJson
   )
 

@@ -3,7 +3,7 @@ package eventer.infrastructure
 import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
 
 import eventer.infrastructure.DatabaseContext.Service
-import io.getquill.{PostgresJdbcContext, SnakeCase}
+import io.getquill.{Escape, NamingStrategy, PostgresJdbcContext, SnakeCase}
 import zio.RIO
 import zio.blocking.Blocking
 
@@ -13,7 +13,8 @@ trait DatabaseContext {
 
 object DatabaseContext {
 
-  abstract class Service(quillConfigKey: String) extends PostgresJdbcContext[SnakeCase](SnakeCase, quillConfigKey) {
+  abstract class Service(quillConfigKey: String)
+      extends PostgresJdbcContext(NamingStrategy(SnakeCase, Escape), quillConfigKey) {
     object schema {
       val event: Quoted[EntityQuery[DbEvent]] = quote(
         querySchema[DbEvent]("event", _.instant -> "date_time", _.zoneId -> "time_zone"))
