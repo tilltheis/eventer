@@ -3,7 +3,7 @@ package eventer.application
 import cats.MonadError
 import eventer.domain._
 import eventer.infrastructure.InMemoryEventRepository
-import eventer.{UnitSpec, domain}
+import eventer.{TestEnvSpec, domain}
 import org.http4s._
 import org.http4s.implicits._
 import zio.clock.Clock
@@ -47,7 +47,7 @@ object WebServerSpec {
       }
   }
 
-  val spec: UnitSpec = suite("WebServer")(
+  val spec: TestEnvSpec = suite("WebServer")(
     suite("GET /events")(testM("returns the events from the repository") {
       val fixture = new Fixture
       import fixture._

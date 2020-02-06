@@ -2,7 +2,7 @@ package eventer.application
 
 import java.time.format.DateTimeFormatter
 
-import eventer.UnitSpec
+import eventer.TestEnvSpec
 import eventer.domain.{Event, TestData}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -23,7 +23,7 @@ object CodecsSpec {
     "dateTime" -> TestData.event.dateTime.format(DateTimeFormatter.ISO_ZONED_DATE_TIME).asJson
   )
 
-  val spec: UnitSpec = suite("Codecs") {
+  val spec: TestEnvSpec = suite("Codecs") {
     suite("Event")(
       suite("encode")(test("works") {
         assert(TestData.event.asJson, equalTo(json))

@@ -1,6 +1,6 @@
 package eventer.domain
 
-import eventer.UnitSpec
+import eventer.TestEnvSpec
 import zio.test._
 import zio.test.Assertion._
 
@@ -13,7 +13,7 @@ object SessionServiceImplSpec {
     val stateM = InMemoryUserRepository.makeState(Set(TestData.user))
   }
 
-  val spec: UnitSpec = suite("SessionServiceImpl")(
+  val spec: TestEnvSpec = suite("SessionServiceImpl")(
     suite("login")(
       testM("succeeds for correct credentials") {
         val fixture = new Fixture

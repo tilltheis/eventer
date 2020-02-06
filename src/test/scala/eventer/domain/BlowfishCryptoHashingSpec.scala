@@ -1,11 +1,11 @@
 package eventer.domain
 
-import eventer.UnitSpec
+import eventer.TestEnvSpec
 import zio.test._
 import zio.test.Assertion._
 
 object BlowfishCryptoHashingSpec {
-  val spec: UnitSpec =
+  val spec: TestEnvSpec =
     suite("BlowfishCryptoHashing")(
       suite("verify")(
         testM("returns true for the original hash input") {
