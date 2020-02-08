@@ -42,7 +42,6 @@ class WebServer[R](eventRepository: EventRepository[R],
             now <- clock.clock.currentDateTime
             expiresAt = now.plusDays(30)
             jwtHeaderPayloadSignature <- sessionService.encodedJwtHeaderPayloadSignature(loginResponse.asJson.noSpaces,
-                                                                                         now.toInstant,
                                                                                          expiresAt.toInstant)
             (header, payload, signature) = jwtHeaderPayloadSignature // for some reason we cannot pattern match above
             csrfToken <- csrfTokenGenerator
@@ -78,9 +77,8 @@ class WebServer[R](eventRepository: EventRepository[R],
         jwtHeaderPayload <- UIO(request.cookies.find(_.name == JwtHeaderPayloadCookieName).map(_.content)).someOrFailException
         jwtSignature <- UIO(request.cookies.find(_.name == JwtSignatureCookieName).map(_.content)).someOrFailException
         (jwtHeader, jwtPayload) <- UIO(Some(jwtHeaderPayload).map(_.split('.')).collect { case Array(x, y) => (x, y) }).someOrFailException
-        now <- ZIO.accessM[Clock](_.clock.currentDateTime).map(_.toInstant)
         contentJson <- sessionService
-          .decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature, now)
+          .decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
           .someOrFailException
         loginResponse <- UIO(io.circe.parser.decode[LoginResponse](contentJson).toOption).someOrFailException
       } yield loginResponse.name

@@ -9,7 +9,7 @@ class InMemoryEventRepository extends EventRepository[State] {
   override def findById(id: EventId): RIO[State, Option[Event]] =
     RIO.accessM[State](_.eventRepositoryStateRef.get).map(_.find(_.id == id))
   override def create(event: Event): RIO[State, Unit] =
-    RIO.accessM[State](_.eventRepositoryStateRef.update(_.appended(event))).map(_ => ())
+    RIO.accessM[State](_.eventRepositoryStateRef.update(_.appended(event))).unit
 }
 
 object InMemoryEventRepository {

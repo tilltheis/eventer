@@ -30,7 +30,7 @@ object DatabaseContext {
       zio.blocking.blocking(RIO(performIO(io)))
 
     def performEffect_(io: IO[_, _]): RIO[Blocking, Result[Unit]] =
-      performEffect(io).map(_ => ())
+      performEffect(io).unit
   }
 
   class Live(override val databaseContext: Service) extends DatabaseContext

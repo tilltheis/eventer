@@ -1,9 +1,11 @@
 package eventer.domain
 
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtOptions}
-import zio.{RIO, UIO}
+import zio.clock.Clock
+import zio.{RIO, URIO, ZIO}
 
 class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
                                     cryptoHashing: CryptoHashing[HashT],
@@ -18,24 +20,22 @@ class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
     }
 
   override def encodedJwtHeaderPayloadSignature(content: String,
-                                                now: Instant,
-                                                expiresAt: Instant): UIO[(String, String, String)] = {
-    val claim = JwtClaim(content, issuedAt = Some(now.getEpochSecond), expiration = Some(expiresAt.getEpochSecond))
-    UIO(Jwt.encode(claim, jwtSigningKey, JwtAlgorithm.HS256)).map { jwtString =>
-      val Array(header, payload, signature) = jwtString.split('.')
+                                                expiresAt: Instant): URIO[Clock, (String, String, String)] =
+    ZIO.accessM[Clock](_.clock.currentTime(TimeUnit.SECONDS)).map { now =>
+      val claim = JwtClaim(content, issuedAt = Some(now), expiration = Some(expiresAt.getEpochSecond))
+      val Array(header, payload, signature) = Jwt.encode(claim, jwtSigningKey, JwtAlgorithm.HS256).split('.')
       (header, payload, signature)
     }
-  }
 
   override def decodedJwtHeaderPayloadSignature(header: String,
                                                 payload: String,
-                                                signature: String,
-                                                now: Instant): UIO[Option[String]] = {
-    UIO(
+                                                signature: String): URIO[Clock, Option[String]] = {
+    ZIO.accessM[Clock](_.clock.currentTime(TimeUnit.SECONDS)).map { now =>
       Jwt
         .decode(s"$header.$payload.$signature", jwtSigningKey, Seq(JwtAlgorithm.HS256), JwtOptions(expiration = false))
-        .filter(_.expiration.forall(_ > now.getEpochSecond))
+        .filter(_.expiration.forall(_ > now))
         .map(_.content)
-        .toOption)
+        .toOption
+    }
   }
 }

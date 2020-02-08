@@ -3,21 +3,20 @@ package eventer.domain
 import java.time.Instant
 
 import eventer.domain.InMemorySessionService.State
-import zio.{RIO, Ref, UIO}
+import zio.clock.Clock
+import zio.{RIO, Ref, UIO, URIO}
 
 class InMemorySessionService extends SessionService[State] {
   override def login(loginRequest: LoginRequest): RIO[State, Option[LoginResponse]] =
     RIO.accessM[State](_.sessionServiceStateRef.get).map(_.get(loginRequest))
 
   override def encodedJwtHeaderPayloadSignature(content: String,
-                                                now: Instant,
-                                                expiresAt: Instant): UIO[(String, String, String)] =
+                                                expiresAt: Instant): URIO[Clock, (String, String, String)] =
     UIO.succeed("header", eventer.base64Encode(content), "signature")
 
   override def decodedJwtHeaderPayloadSignature(header: String,
                                                 payload: String,
-                                                signature: String,
-                                                now: Instant): UIO[Option[String]] =
+                                                signature: String): URIO[Clock, Option[String]] =
     eventer.base64Decode(payload).option
 }
 

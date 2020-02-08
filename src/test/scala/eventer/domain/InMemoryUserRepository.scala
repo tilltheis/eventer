@@ -5,7 +5,7 @@ import zio.{RIO, Ref, UIO}
 
 class InMemoryUserRepository extends UserRepository[State, String] {
   override def create(user: User[String]): RIO[State, Unit] =
-    RIO.accessM[State](_.sessionServiceStateRef.update(_ + user)).map(_ => ())
+    RIO.accessM[State](_.sessionServiceStateRef.update(_ + user)).unit
 
   override def findByEmail(email: String): RIO[State, Option[User[String]]] =
     RIO.accessM[State](_.sessionServiceStateRef.get).map(_.find(_.email == email))
