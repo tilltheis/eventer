@@ -1,7 +1,9 @@
 package eventer.domain
 
-import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim}
-import zio.{RIO, UIO, URIO}
+import java.time.Instant
+
+import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtOptions}
+import zio.{RIO, UIO}
 
 class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
                                     cryptoHashing: CryptoHashing[HashT],
@@ -11,17 +13,29 @@ class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
     userRepository.findByEmail(loginRequest.email).flatMap { userOption =>
       (for {
         user <- RIO(userOption).someOrFailException
-        _ <- cryptoHashing.verify(loginRequest.password, user.passwordHash).map(Option.when(_)(())).someOrFailException
-      } yield LoginResponse(user.id, user.name, user.email)).fold(_ => None, Some.apply)
+        _ <- cryptoHashing.verify(loginRequest.password, user.passwordHash).filterOrFail(identity)(new RuntimeException)
+      } yield LoginResponse(user.id, user.name, user.email)).option
     }
 
   override def encodedJwtHeaderPayloadSignature(content: String,
-                                                nowEpochSeconds: Long,
-                                                expiresInSeconds: Long): UIO[(String, String, String)] = {
-    val claim = JwtClaim(content, issuedAt = Some(nowEpochSeconds), expiration = Some(expiresInSeconds))
-    URIO(Jwt.encode(claim, jwtSigningKey, JwtAlgorithm.HS256)).map { jwtString =>
+                                                now: Instant,
+                                                expiresAt: Instant): UIO[(String, String, String)] = {
+    val claim = JwtClaim(content, issuedAt = Some(now.getEpochSecond), expiration = Some(expiresAt.getEpochSecond))
+    UIO(Jwt.encode(claim, jwtSigningKey, JwtAlgorithm.HS256)).map { jwtString =>
       val Array(header, payload, signature) = jwtString.split('.')
       (header, payload, signature)
     }
+  }
+
+  override def decodedJwtHeaderPayloadSignature(header: String,
+                                                payload: String,
+                                                signature: String,
+                                                now: Instant): UIO[Option[String]] = {
+    UIO(
+      Jwt
+        .decode(s"$header.$payload.$signature", jwtSigningKey, Seq(JwtAlgorithm.HS256), JwtOptions(expiration = false))
+        .filter(_.expiration.forall(_ > now.getEpochSecond))
+        .map(_.content)
+        .toOption)
   }
 }

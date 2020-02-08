@@ -1,5 +1,7 @@
 package eventer.domain
 
+import java.time.Instant
+
 import eventer.domain.InMemorySessionService.State
 import zio.{RIO, Ref, UIO}
 
@@ -8,9 +10,15 @@ class InMemorySessionService extends SessionService[State] {
     RIO.accessM[State](_.sessionServiceStateRef.get).map(_.get(loginRequest))
 
   override def encodedJwtHeaderPayloadSignature(content: String,
-                                                nowEpochSeconds: Long,
-                                                expiresInSeconds: Long): UIO[(String, String, String)] =
-    UIO.succeed("header", content, "signature")
+                                                now: Instant,
+                                                expiresAt: Instant): UIO[(String, String, String)] =
+    UIO.succeed("header", eventer.base64Encode(content), "signature")
+
+  override def decodedJwtHeaderPayloadSignature(header: String,
+                                                payload: String,
+                                                signature: String,
+                                                now: Instant): UIO[Option[String]] =
+    eventer.base64Decode(payload).option
 }
 
 object InMemorySessionService {

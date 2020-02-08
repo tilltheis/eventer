@@ -49,7 +49,7 @@ object Main extends zio.App with LazyLogging {
         val sessionService = new SessionServiceImpl[ApplicationEnvironment, BlowfishHash](userRepository,
                                                                                           cryptoHashing,
                                                                                           config.server.jwtSigningKey)
-        val webServer = new WebServer(eventRepository, sessionService)
+        val webServer = new WebServer(eventRepository, sessionService, UIO(UUID.randomUUID().toString))
 
         for {
           _ <- userRepository

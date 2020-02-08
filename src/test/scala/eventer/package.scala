@@ -1,8 +1,10 @@
+import java.util.Base64
+
 import eventer.infrastructure.{DatabaseContext, DatabaseProvider, TestDatabaseProvider}
-import zio.{Cause, ZIO, ZManaged}
 import zio.blocking.Blocking
-import zio.test.{TestFailure, TestResult, ZSpec, testM}
 import zio.test.environment.TestEnvironment
+import zio.test.{TestFailure, TestResult, ZSpec, testM}
+import zio.{Cause, Task, ZIO, ZManaged}
 
 package object eventer {
   type TestEnvSpec = ZSpec[TestEnvironment, Throwable, String, Unit]
@@ -33,4 +35,8 @@ package object eventer {
           override val blocking: Blocking.Service[Any] = envBlocking.blocking
         }
       }
+
+  def base64Encode(string: String): String = new String(Base64.getEncoder.encode(string.getBytes("UTF-8")), "UTF-8")
+  def base64Decode(string: String): Task[String] =
+    Task(new String(Base64.getDecoder.decode(string.getBytes("UTF-8")), "UTF-8"))
 }
