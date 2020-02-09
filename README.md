@@ -37,6 +37,6 @@ Test the frontend with `(cd frontend && CI=true npm test)`.
 - [ ] invite internal guests (app-internal "friends")
 - [ ] invite external guests (via email)
 - [ ] user registration
-- [ ] user login
+- [x] user login
 - [ ] guest login
 - [ ] event locations (online + offline)

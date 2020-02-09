@@ -6,6 +6,7 @@ import dateFnsLocalizer from 'react-widgets-date-fns';
 import { format } from 'date-fns-tz';
 import { listTimeZones } from 'timezone-support';
 import { Redirect } from "react-router-dom";
+import { getCookieValue } from './cookies';
 
 dateFnsLocalizer();
 
@@ -60,6 +61,10 @@ export default class EventEditor extends React.Component {
 
     fetch(process.env.REACT_APP_API_URL + '/events', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Csrf-Token': getCookieValue('csrf-token')
+      },
       body: JSON.stringify({
         id: this.state.id,
         hostId: this.state.hostId,

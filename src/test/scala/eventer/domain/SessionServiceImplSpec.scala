@@ -14,8 +14,9 @@ import zio.test.environment.TestClock
 object SessionServiceImplSpec {
   private val userRepository = new InMemoryUserRepository
   private val cryptoHashing = new PlaintextCryptoHashing
-  private val sessionService =
-    new SessionServiceImpl[InMemoryUserRepository.State, String](userRepository, cryptoHashing, "jwt-signing-key")
+  private val keyString = "I57lQ6u3M2SgWzjuqj+tyviRaSpBGsLxcJhprwVEonI="
+  private val key = eventer.util.unsafeSecretKeyFromBase64(keyString, SessionServiceImpl.JwtSigningAlgorithm)
+  private val sessionService = new SessionServiceImpl(userRepository, cryptoHashing, key)
   private val loginStateM = InMemoryUserRepository.makeState(Set(TestData.user))
 
   private val now = Duration(13, TimeUnit.SECONDS)
@@ -25,16 +26,16 @@ object SessionServiceImplSpec {
     suite("login")(
       testM("succeeds for correct credentials") {
         for {
-          maybeLoginResponse <- sessionService.login(TestData.loginRequest).provideM(loginStateM)
-        } yield assert(maybeLoginResponse, isSome(equalTo(TestData.loginResponse)))
+          maybeSessionUser <- sessionService.login(TestData.loginRequest).provideM(loginStateM)
+        } yield assert(maybeSessionUser, isSome(equalTo(TestData.sessionUser)))
       },
       testM("fails for incorrect credentials") {
         checkAllM(
           Gen.fromIterable(Seq(TestData.loginRequest.copy(email = "wrong-email"),
                                TestData.loginRequest.copy(password = "wrong-password")))) { loginRequest =>
           for {
-            maybeLoginResponse <- sessionService.login(loginRequest).provideM(loginStateM)
-          } yield assert(maybeLoginResponse, isNone)
+            maybeSessionUser <- sessionService.login(loginRequest).provideM(loginStateM)
+          } yield assert(maybeSessionUser, isNone)
         }
       }
     ),

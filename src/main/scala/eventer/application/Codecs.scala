@@ -1,7 +1,7 @@
 package eventer.application
 
 import cats.effect.Sync
-import eventer.domain.{Event, EventId, LoginRequest, LoginResponse, UserId}
+import eventer.domain.{Event, EventId, LoginRequest, SessionUser, UserId}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder}
@@ -21,8 +21,8 @@ class Codecs[F[_]: Sync] {
   implicit val loginRequestEncoder: Encoder[LoginRequest] = deriveEncoder
   implicit val loginRequestDecoder: Decoder[LoginRequest] = deriveDecoder
 
-  implicit val loginResponseEncoder: Encoder[LoginResponse] = deriveEncoder
-  implicit val loginResponseDecoder: Decoder[LoginResponse] = deriveDecoder
+  implicit val sessionUserEncoder: Encoder[SessionUser] = deriveEncoder
+  implicit val sessionUserDecoder: Decoder[SessionUser] = deriveDecoder
 
   implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]): EntityDecoder[F, A] = jsonOf[F, A]
   implicit def circeJsonEncoder[A](implicit decoder: Encoder[A]): EntityEncoder[F, A] = jsonEncoderOf[F, A]

@@ -15,5 +15,5 @@ package object domain {
   final case class LoginRequest(email: String, password: String) {
     override def toString: String = ScalaRunTime._toString(copy(password = "<anonymized>"))
   }
-  final case class LoginResponse(id: UserId, name: String, email: String)
+  final case class SessionUser(id: UserId, name: String, email: String)
 }

@@ -22,5 +22,5 @@ object TestData {
   val user: User[String] = User(userId, "name", "email", "password")
 
   val loginRequest: LoginRequest = LoginRequest("email", "password")
-  val loginResponse: LoginResponse = LoginResponse(userId, "name", "email")
+  val sessionUser: SessionUser = SessionUser(userId, "name", "email")
 }

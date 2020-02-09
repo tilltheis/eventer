@@ -3,20 +3,25 @@ package eventer.domain
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
+import javax.crypto.SecretKey
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtOptions}
 import zio.clock.Clock
 import zio.{RIO, URIO, ZIO}
 
+object SessionServiceImpl {
+  val JwtSigningAlgorithm: String = JwtAlgorithm.HS256.fullName
+}
+
 class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
                                     cryptoHashing: CryptoHashing[HashT],
-                                    jwtSigningKey: String)
+                                    jwtSigningKey: SecretKey)
     extends SessionService[R] {
-  override def login(loginRequest: LoginRequest): RIO[R, Option[LoginResponse]] =
+  override def login(loginRequest: LoginRequest): RIO[R, Option[SessionUser]] =
     userRepository.findByEmail(loginRequest.email).flatMap { userOption =>
       (for {
         user <- RIO(userOption).someOrFailException
         _ <- cryptoHashing.verify(loginRequest.password, user.passwordHash).filterOrFail(identity)(new RuntimeException)
-      } yield LoginResponse(user.id, user.name, user.email)).option
+      } yield SessionUser(user.id, user.name, user.email)).option
     }
 
   override def encodedJwtHeaderPayloadSignature(content: String,
