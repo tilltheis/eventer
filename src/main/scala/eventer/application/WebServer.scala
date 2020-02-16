@@ -6,13 +6,13 @@ import cats.effect.ExitCode
 import eventer.application.WebServer._
 import eventer.domain._
 import io.circe.syntax.EncoderOps
-import javax.crypto.{KeyGenerator, SecretKey}
+import javax.crypto.SecretKey
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.blaze.BlazeServerBuilder
-import org.http4s.server.middleware.CSRF.{CSRFBuilder, SigningAlgo}
 import org.http4s.server.middleware.CSRF
+import org.http4s.server.middleware.CSRF.CSRFBuilder
 import org.http4s.server.{AuthMiddleware, Middleware}
 import org.http4s.syntax.kleisli.http4sKleisliResponseSyntaxOptionT
 import org.http4s.util.CaseInsensitiveString
@@ -37,9 +37,8 @@ class WebServer[R](eventRepository: EventRepository[R],
   type OptionTIO = { type T[A] = OptionT[IO, A] }
 
   private[application] val csrf: CSRF[OptionTIO#T, IO] = {
-    val key = KeyGenerator.getInstance(SigningAlgo).generateKey()
     // Double submit cookie is enough, no need to check Origin header on top of that.
-    val csrfBuilder: CSRFBuilder[OptionTIO#T, IO] = CSRF(key, _ => true)
+    val csrfBuilder: CSRFBuilder[OptionTIO#T, IO] = CSRF(csrfKey, _ => true)
     csrfBuilder
       .withCookieName(CsrfTokenCookieName)
       .withHeaderName(CaseInsensitiveString(CsrfTokenHeaderName))

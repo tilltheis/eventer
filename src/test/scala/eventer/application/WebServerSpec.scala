@@ -26,8 +26,8 @@ object WebServerSpec {
     val eventRepository = new InMemoryEventRepository
     val sessionService = new InMemorySessionService
     private val keyString = "DXfXgmx9lLTh+25+VfxOMo+uiRdTm47yHNoVu41/jZFWYeXQY+J6ZRwWByrH59SaKQ5PNiXEv25xakqqm9xwAg=="
-    private val key = eventer.util.unsafeSecretKeyFromBase64(keyString, WebServer.CsrfSigningAlgorithm)
-    val webServer = new WebServer(eventRepository, sessionService, UIO.succeed(TestData.eventId), key)
+    val csrfKey = eventer.util.unsafeSecretKeyFromBase64(keyString, WebServer.CsrfSigningAlgorithm)
+    val webServer = new WebServer(eventRepository, sessionService, UIO.succeed(TestData.eventId), csrfKey)
 
     type R = Clock with InMemoryEventRepository.State with InMemorySessionService.State
     type IO[A] = webServer.IO[A]
@@ -87,6 +87,21 @@ object WebServerSpec {
         assert(response.status, equalTo(Status.Ok)) &&
           assert(body, isSome(isRight(equalTo(events))))
     }),
+    suite("csrf")(
+      testM("tokens are valid across WebServer instances") {
+        val fixture = new Fixture
+        import fixture._
+
+        val webServer2 = new WebServer(eventRepository, sessionService, UIO.succeed(TestData.eventId), csrfKey)
+
+        for {
+          state <- makeState()
+          request <- CsrfRequestM(Method.GET, uri"/events")
+          response <- webServer.routes.run(request).provide(state)
+          response2 <- webServer2.routes.run(request).provide(state)
+        } yield assert(response.status, equalTo(Status.Ok)) && assert(response2.status, equalTo(Status.Ok))
+      }
+    ),
     suite("POST /events")(
       testM("inserts the event into the repository") {
         val fixture = new Fixture
