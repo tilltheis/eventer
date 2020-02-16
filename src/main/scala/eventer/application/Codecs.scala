@@ -1,7 +1,7 @@
 package eventer.application
 
 import cats.effect.Sync
-import eventer.domain.{Event, EventId, LoginRequest, SessionUser, UserId}
+import eventer.domain.{Event, EventCreationRequest, EventId, LoginRequest, SessionUser, UserId}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder}
@@ -17,6 +17,9 @@ class Codecs[F[_]: Sync] {
 
   implicit val eventEncoder: Encoder[Event] = deriveEncoder
   implicit val eventDecoder: Decoder[Event] = deriveDecoder
+
+  implicit val eventCreationRequestEncoder: Encoder[EventCreationRequest] = deriveEncoder
+  implicit val eventCreationRequestDecoder: Decoder[EventCreationRequest] = deriveDecoder
 
   implicit val loginRequestEncoder: Encoder[LoginRequest] = deriveEncoder
   implicit val loginRequestDecoder: Decoder[LoginRequest] = deriveDecoder

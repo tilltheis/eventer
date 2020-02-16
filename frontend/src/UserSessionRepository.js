@@ -1,11 +1,11 @@
-import { httpPost, httpDelete } from './utils';
+import { httpPostIgnore, httpDeleteIgnore } from './utils';
 
 export default class UserSessionRepository {
   login(email, password) {
-    return httpPost('/sessions', { email, password });
+    return httpPostIgnore('/sessions', { email, password });
   }
 
   logout() {
-    return httpDelete('/sessions');
+    return httpDeleteIgnore('/sessions');
   }
 }

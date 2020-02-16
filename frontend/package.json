@@ -18,8 +18,7 @@
     "react-scripts": "3.3.0",
     "react-widgets": "^4.4.11",
     "react-widgets-date-fns": "^4.0.26",
-    "timezone-support": "^2.0.2",
-    "uuid": "^3.4.0"
+    "timezone-support": "^2.0.2"
   },
   "scripts": {
     "start": "react-scripts start",

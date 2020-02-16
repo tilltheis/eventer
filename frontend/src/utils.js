@@ -13,12 +13,11 @@ export function makeFsm(...stateNames) {
   );
 }
 
-const okOnlyResponse = response => (response.ok ? Promise.resolve(response) : Promise.reject(new Error('not ok')));
-const okOnlyUndefined = response => okOnlyResponse(response).then(undefined);
+const okOnly = response => (response.ok ? Promise.resolve(response) : Promise.reject(new Error('not ok')));
 
 export function httpGet(url) {
   return fetch(url)
-    .then(okOnlyResponse)
+    .then(okOnly)
     .then(response => response.json());
 }
 
@@ -30,7 +29,11 @@ export function httpPost(url, data) {
       'X-Csrf-Token': getCookieValue('csrf-token'),
     },
     body: JSON.stringify(data),
-  }).then(okOnlyUndefined);
+  }).then(okOnly);
+}
+
+export function httpPostIgnore(url, data) {
+  return httpPost(url, data).then(undefined);
 }
 
 export function httpDelete(url) {
@@ -39,5 +42,9 @@ export function httpDelete(url) {
     headers: {
       'X-Csrf-Token': getCookieValue('csrf-token'),
     },
-  }).then(okOnlyUndefined);
+  }).then(okOnly);
+}
+
+export function httpDeleteIgnore(url) {
+  return httpDelete(url).then(undefined);
 }

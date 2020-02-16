@@ -16,4 +16,9 @@ package object domain {
     override def toString: String = ScalaRunTime._toString(copy(password = "<anonymized>"))
   }
   final case class SessionUser(id: UserId, name: String, email: String)
+
+  final case class EventCreationRequest(title: String, description: String, dateTime: ZonedDateTime) {
+    def toEvent(id: EventId, hostId: UserId): Event =
+      Event(id = id, title = title, description = description, hostId = hostId, dateTime = dateTime)
+  }
 }

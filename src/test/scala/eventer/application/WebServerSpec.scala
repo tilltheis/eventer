@@ -3,6 +3,8 @@ package eventer.application
 import java.util.concurrent.TimeUnit
 
 import cats.MonadError
+import cats.instances.option._
+import cats.syntax.traverse._
 import eventer.TestEnvSpec
 import eventer.domain._
 import eventer.infrastructure.InMemoryEventRepository
@@ -25,7 +27,7 @@ object WebServerSpec {
     val sessionService = new InMemorySessionService
     private val keyString = "DXfXgmx9lLTh+25+VfxOMo+uiRdTm47yHNoVu41/jZFWYeXQY+J6ZRwWByrH59SaKQ5PNiXEv25xakqqm9xwAg=="
     private val key = eventer.util.unsafeSecretKeyFromBase64(keyString, WebServer.CsrfSigningAlgorithm)
-    val webServer = new WebServer(eventRepository, sessionService, key)
+    val webServer = new WebServer(eventRepository, sessionService, UIO.succeed(TestData.eventId), key)
 
     type R = Clock with InMemoryEventRepository.State with InMemorySessionService.State
     type IO[A] = webServer.IO[A]
@@ -61,10 +63,11 @@ object WebServerSpec {
         }
 
     def parseResponseBody[A](response: Response[IO])(implicit F: MonadError[IO, Throwable],
-                                                     decoder: EntityDecoder[IO, A]): IO[Either[Throwable, Option[A]]] =
+                                                     decoder: EntityDecoder[IO, A]): IO[Option[Either[Throwable, A]]] =
       response.body.compile.toVector.flatMap { bytes =>
-        if (bytes.isEmpty) UIO.succeed(Right(None))
-        else response.as[A](F, decoder).map(x => Right(Some(x))).catchAll(t => UIO.succeed(Left(t)))
+        Option
+          .when(bytes.nonEmpty)(response)
+          .traverse(_.as[A](F, decoder).map(Right(_)).catchAll(t => UIO.succeed(Left(t))))
       }
   }
 
@@ -82,7 +85,7 @@ object WebServerSpec {
         body <- parseResponseBody[Seq[Event]](response).provide(state)
       } yield
         assert(response.status, equalTo(Status.Ok)) &&
-          assert(body, isRight(isSome(equalTo(events))))
+          assert(body, isSome(isRight(equalTo(events))))
     }),
     suite("POST /events")(
       testM("inserts the event into the repository") {
@@ -92,13 +95,13 @@ object WebServerSpec {
 
         for {
           state <- makeState()
-          request <- AuthedRequestM(Method.POST, uri"/events").map(_.withEntity(TestData.event))
+          request <- AuthedRequestM(Method.POST, uri"/events").map(_.withEntity(TestData.eventCreationRequest))
           response <- webServer.routes.run(request).provide(state)
           body <- parseResponseBody[Unit](response).provide(state)
           finalState <- state.eventRepositoryStateRef.get
         } yield
           assert(response.status, equalTo(Status.Created)) &&
-            assert(body, isRight(isNone)) &&
+            assert(body, isNone) &&
             assert(finalState, equalTo(Seq(TestData.event)))
       },
       testM("rejects requests that are not authenticated") {
@@ -137,7 +140,7 @@ object WebServerSpec {
                    makeCookie("jwt-header.payload",
                               s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}",
                               httpOnly = false))) &&
-          assert(body, isRight(isNone))
+          assert(body, isNone)
         }
       },
       testM("generates a random csrf token") {
@@ -173,7 +176,7 @@ object WebServerSpec {
           body <- parseResponseBody[Unit](response).provide(state)
         } yield
           assert(response.status, equalTo(Status.Forbidden)) &&
-            assert(body, isRight(isNone))
+            assert(body, isNone)
       },
       testM("rejects the request if the csrf token is missing") {
         // This should be tested for every route but since our middleware takes care of that and i don't want to bloat
@@ -192,7 +195,7 @@ object WebServerSpec {
           body <- parseResponseBody[Unit](response).provide(state)
         } yield
           assert(response.status, equalTo(Status.Forbidden)) &&
-            assert(body, isRight(isNone))
+            assert(body, isNone)
       }
     ),
     suite("DELETE /session")(
@@ -216,7 +219,7 @@ object WebServerSpec {
                            httpOnly = httpOnly)
           assert(response.cookies, contains(makeCookie("jwt-header.payload", httpOnly = false))) &&
           assert(response.cookies, contains(makeCookie("jwt-signature", httpOnly = true))) &&
-          assert(body, isRight(isNone))
+          assert(body, isNone)
         }
       },
       testM("rejects the request when not logged in") {
@@ -229,7 +232,7 @@ object WebServerSpec {
           request <- CsrfRequestM(Method.DELETE, uri"/sessions")
           response <- webServer.routes.run(request).provide(state)
           body <- parseResponseBody[Unit](response).provide(state)
-        } yield assert(response.status, equalTo(Status.Forbidden)) && assert(body, isRight(isNone))
+        } yield assert(response.status, equalTo(Status.Forbidden)) && assert(body, isNone)
       }
     ),
     suite("XXX /unknown")(testM(s"returns 403 Forbidden") {

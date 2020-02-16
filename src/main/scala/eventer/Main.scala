@@ -5,11 +5,11 @@ import java.util.UUID
 import com.typesafe.scalalogging.LazyLogging
 import eventer.application.WebServer
 import eventer.domain.BlowfishCryptoHashing.BlowfishHash
-import eventer.domain.{BlowfishCryptoHashing, SessionServiceImpl, User, UserId}
+import eventer.domain.{BlowfishCryptoHashing, EventId, SessionServiceImpl, User, UserId}
 import eventer.infrastructure._
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{RManaged, ZIO, ZManaged}
+import zio.{RManaged, UIO, ZIO, ZManaged}
 
 final case class ServerConfig(port: Int, jwtSigningKeyBase64: String, csrfSigningKeyBase64: String)
 final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
@@ -60,7 +60,7 @@ object Main extends zio.App with LazyLogging {
           jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, SessionServiceImpl.JwtSigningAlgorithm)
           csrfKey <- util.secretKeyFromBase64(config.server.csrfSigningKeyBase64, WebServer.CsrfSigningAlgorithm)
           sessionService = new SessionServiceImpl(userRepository, cryptoHashing, jwtKey)
-          webServer = new WebServer(eventRepository, sessionService, csrfKey)
+          webServer = new WebServer(eventRepository, sessionService, UIO(EventId(UUID.randomUUID())), csrfKey)
           serving <- webServer.serve(config.server.port).provide(appEnv)
         } yield serving
       }

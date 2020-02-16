@@ -1,8 +1,8 @@
-import { httpGet, httpPost } from './utils';
+import { httpGet, httpPostIgnore } from './utils';
 
 export default class EventRepository {
   create(event) {
-    return httpPost('/events', event);
+    return httpPostIgnore('/events', event);
   }
 
   findAll() {

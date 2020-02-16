@@ -25,9 +25,6 @@ export default class EventEditor extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      id: props.generateUuid(),
-      hostId: '6f31ccde-4321-4cc9-9056-6c3cbd550cba',
-
       title: '',
       dateTime: '',
       timeZone: defaultTimeZone,
@@ -225,7 +222,6 @@ export default class EventEditor extends React.Component {
 }
 
 EventEditor.propTypes = {
-  generateUuid: PropTypes.func.isRequired,
   setToast: PropTypes.func.isRequired,
   eventRepository: PropTypes.shape({
     create: PropTypes.func.isRequired,

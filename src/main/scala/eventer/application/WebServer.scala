@@ -12,7 +12,7 @@ import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.CSRF.{CSRFBuilder, SigningAlgo}
-import org.http4s.server.middleware.{CORS, CSRF}
+import org.http4s.server.middleware.CSRF
 import org.http4s.server.{AuthMiddleware, Middleware}
 import org.http4s.syntax.kleisli.http4sKleisliResponseSyntaxOptionT
 import org.http4s.util.CaseInsensitiveString
@@ -29,7 +29,10 @@ object WebServer {
   private[application] val CsrfTokenHeaderName = "X-Csrf-Token"
 }
 
-class WebServer[R](eventRepository: EventRepository[R], sessionService: SessionService[R], csrfKey: SecretKey) {
+class WebServer[R](eventRepository: EventRepository[R],
+                   sessionService: SessionService[R],
+                   generateEventId: UIO[EventId],
+                   csrfKey: SecretKey) {
   type IO[A] = RIO[R with Clock, A]
   type OptionTIO = { type T[A] = OptionT[IO, A] }
 
@@ -105,9 +108,11 @@ class WebServer[R](eventRepository: EventRepository[R], sessionService: SessionS
           _.addCookie(removeCookie(JwtHeaderPayloadCookieName, httpOnly = false))
             .addCookie(removeCookie(JwtSignatureCookieName, httpOnly = true)))
 
-      case request @ POST -> Root / "events" as _ =>
+      case request @ POST -> Root / "events" as sessionUser =>
         for {
-          event <- request.req.as[Event]
+          eventCreationRequest <- request.req.as[EventCreationRequest]
+          id <- generateEventId
+          event = eventCreationRequest.toEvent(id, sessionUser.id)
           _ <- eventRepository.create(event)
           response <- Created()
         } yield response
@@ -130,7 +135,7 @@ class WebServer[R](eventRepository: EventRepository[R], sessionService: SessionS
     ZIO.runtime[R with Clock].flatMap { implicit clock =>
       BlazeServerBuilder[IO]
         .bindHttp(port, "0.0.0.0")
-        .withHttpApp(CORS(routes))
+        .withHttpApp(routes)
         .serve
         .compile[IO, IO, ExitCode]
         .drain

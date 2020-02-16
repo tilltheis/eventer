@@ -25,8 +25,6 @@ function resolvablePromise() {
 }
 
 const correctEvent = {
-  id: 'test uuid',
-  hostId: '6f31ccde-4321-4cc9-9056-6c3cbd550cba',
   title: 'test title',
   dateTime: '2020-01-25T13:36+02:00[Africa/Johannesburg]',
   description: 'test description',

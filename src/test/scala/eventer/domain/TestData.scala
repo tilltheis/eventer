@@ -18,9 +18,14 @@ object TestData {
     hostId = userId,
     dateTime = zonedDateTime
   )
+  val eventCreationRequest: EventCreationRequest = EventCreationRequest(
+    title = event.title,
+    description = event.description,
+    dateTime = event.dateTime
+  )
 
   val user: User[String] = User(userId, "name", "email", "password")
 
-  val loginRequest: LoginRequest = LoginRequest("email", "password")
-  val sessionUser: SessionUser = SessionUser(userId, "name", "email")
+  val loginRequest: LoginRequest = LoginRequest(user.email, user.passwordHash)
+  val sessionUser: SessionUser = SessionUser(userId, user.name, user.email)
 }

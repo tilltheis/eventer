@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import './App.css';
 import Container from 'react-bootstrap/Container';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
-import uuid from 'uuid';
 import Navbar from 'react-bootstrap/Navbar';
 import Nav from 'react-bootstrap/Nav';
 import Toast from './Toast';
@@ -43,7 +42,7 @@ export default function App() {
 
             <Switch>
               <Route path="/events/new">
-                <EventEditor generateUuid={uuid.v4} setToast={setToast} eventRepository={eventRepository} />
+                <EventEditor setToast={setToast} eventRepository={eventRepository} />
               </Route>
               <Route path="/">
                 <EventList eventRepository={eventRepository} />
