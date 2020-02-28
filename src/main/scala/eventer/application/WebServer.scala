@@ -52,13 +52,12 @@ class WebServer[R](eventRepository: EventRepository[R],
     val codecs = new Codecs[IO]
     import codecs._
     val sessionUserM = for {
-      jwtHeaderPayload <- UIO(request.cookies.find(_.name == JwtHeaderPayloadCookieName).map(_.content)).someOrFailException
-      jwtSignature <- UIO(request.cookies.find(_.name == JwtSignatureCookieName).map(_.content)).someOrFailException
-      (jwtHeader, jwtPayload) <- UIO(Some(jwtHeaderPayload).map(_.split('.')).collect { case Array(x, y) => (x, y) }).someOrFailException
-      contentJson <- sessionService
-        .decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
-        .someOrFailException
-      sessionUser <- UIO(io.circe.parser.decode[SessionUser](contentJson).toOption).someOrFailException
+      jwtHeaderPayload <- UIO(request.cookies.find(_.name == JwtHeaderPayloadCookieName).map(_.content)).get
+      jwtSignature <- UIO(request.cookies.find(_.name == JwtSignatureCookieName).map(_.content)).get
+      jwtHeaderAndPayload <- UIO(Some(jwtHeaderPayload).map(_.split('.')).collect { case Array(x, y) => (x, y) }).get
+      (jwtHeader, jwtPayload) = jwtHeaderAndPayload
+      contentJson <- sessionService.decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature).get
+      sessionUser <- UIO(io.circe.parser.decode[SessionUser](contentJson).toOption).get
     } yield sessionUser
     OptionT(sessionUserM.option)
   }

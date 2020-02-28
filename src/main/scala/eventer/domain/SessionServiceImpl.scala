@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 import javax.crypto.SecretKey
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtOptions}
 import zio.clock.Clock
-import zio.{RIO, URIO, ZIO}
+import zio.{RIO, UIO, URIO, ZIO}
 
 object SessionServiceImpl {
   val JwtSigningAlgorithm: String = JwtAlgorithm.HS256.fullName
@@ -19,8 +19,8 @@ class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
   override def login(loginRequest: LoginRequest): RIO[R, Option[SessionUser]] =
     userRepository.findByEmail(loginRequest.email).flatMap { userOption =>
       (for {
-        user <- RIO(userOption).someOrFailException
-        _ <- cryptoHashing.verify(loginRequest.password, user.passwordHash).filterOrFail(identity)(new RuntimeException)
+        user <- UIO(userOption).get
+        _ <- cryptoHashing.verify(loginRequest.password, user.passwordHash).filterOrFail(identity)(())
       } yield SessionUser(user.id, user.name, user.email)).option
     }
 
