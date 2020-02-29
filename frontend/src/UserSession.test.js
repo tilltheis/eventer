@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { render, fireEvent } from '@testing-library/react';
 import { act } from 'react-dom/test-utils';
 import InMemoryUserSessionRepository from './test/InMemoryUserSessionRepository';
@@ -10,14 +11,30 @@ const correctUser = {
   password: 's3cr3t',
 };
 
+// This wrapper component is required to trigger re-renders via `loggedInUser` prop changes.
+const Wrapper = ({ userSessionRepository }) => {
+  const [loggedInUser, setLoggerInUser] = useState(userSessionRepository.getLoggedInUser());
+  return (
+    <UserSession
+      userSessionRepository={userSessionRepository}
+      loggedInUser={loggedInUser}
+      onLoginStatusChange={() => setLoggerInUser(userSessionRepository.getLoggedInUser())}
+    />
+  );
+};
+Wrapper.propTypes = {
+  userSessionRepository: PropTypes.shape({
+    login: PropTypes.func.isRequired,
+    logout: PropTypes.func.isRequired,
+    getLoggedInUser: PropTypes.func.isRequired,
+  }).isRequired,
+};
+
 describe('login', () => {
   test('sends data to the repository and renders the logout component on success', async () => {
     const userSessionRepository = new InMemoryUserSessionRepository([correctUser]);
     const { getByLabelText, getAllByText, getByText } = render(
-      <UserSession
-        userSessionRepository={userSessionRepository}
-        getLoggedInUser={() => userSessionRepository.getLoggedInUser()}
-      />,
+      <Wrapper userSessionRepository={userSessionRepository} />,
     );
 
     await act(async () => {
@@ -48,10 +65,7 @@ describe('login', () => {
   test('displays error message when data is wrong', async () => {
     const userSessionRepository = new InMemoryUserSessionRepository([correctUser]);
     const { getByLabelText, getAllByText, getByText } = render(
-      <UserSession
-        userSessionRepository={userSessionRepository}
-        getLoggedInUser={() => userSessionRepository.getLoggedInUser()}
-      />,
+      <Wrapper userSessionRepository={userSessionRepository} />,
     );
 
     await act(async () => {
@@ -77,10 +91,7 @@ describe('login', () => {
   test('displays error message when data could not be submitted', async () => {
     const userSessionRepository = new InMemoryUserSessionRepository([correctUser], { simulateBrokenConnection: true });
     const { getByLabelText, getAllByText, getByText } = render(
-      <UserSession
-        userSessionRepository={userSessionRepository}
-        getLoggedInUser={() => userSessionRepository.getLoggedInUser()}
-      />,
+      <Wrapper userSessionRepository={userSessionRepository} />,
     );
 
     await act(async () => {
@@ -109,12 +120,7 @@ describe('logout', () => {
     const userSessionRepository = new InMemoryUserSessionRepository([correctUser], {
       initialLoggedInUser: correctUser,
     });
-    const { getByText, getAllByText } = render(
-      <UserSession
-        userSessionRepository={userSessionRepository}
-        getLoggedInUser={() => userSessionRepository.getLoggedInUser()}
-      />,
-    );
+    const { getByText, getAllByText } = render(<Wrapper userSessionRepository={userSessionRepository} />);
 
     await act(async () => {
       fireEvent.click(getByText(correctUser.name));
@@ -133,12 +139,7 @@ describe('logout', () => {
       initialLoggedInUser: correctUser,
       simulateBrokenConnection: true,
     });
-    const { getByText } = render(
-      <UserSession
-        userSessionRepository={userSessionRepository}
-        getLoggedInUser={() => userSessionRepository.getLoggedInUser()}
-      />,
-    );
+    const { getByText } = render(<Wrapper userSessionRepository={userSessionRepository} />);
 
     await act(async () => {
       fireEvent.click(getByText(correctUser.name));

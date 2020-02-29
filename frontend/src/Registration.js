@@ -11,7 +11,7 @@ import { makeFsm, inputValueHandler } from './utils';
 
 const FsmState = makeFsm('Displaying', 'Submitting', 'Succeeding', 'Failing');
 
-export default function Registration({ userRepository, getLoggedInUser }) {
+export default function Registration({ userRepository, loggedInUser }) {
   const [fsmState, setFsmState] = useState(FsmState.Displaying);
 
   const [name, setName] = useState('');
@@ -97,7 +97,7 @@ export default function Registration({ userRepository, getLoggedInUser }) {
     );
   }
 
-  if (getLoggedInUser() !== null) return <></>;
+  if (loggedInUser !== null) return <></>;
   return (
     <OverlayTrigger placement="bottom" overlay={renderPopover()} trigger="click" rootClose>
       <Nav.Link style={{ verticalAlign: 'baseline' }} variant="link">
@@ -109,5 +109,9 @@ export default function Registration({ userRepository, getLoggedInUser }) {
 
 Registration.propTypes = {
   userRepository: PropTypes.shape({ register: PropTypes.func.isRequired }).isRequired,
-  getLoggedInUser: PropTypes.func.isRequired,
+  loggedInUser: PropTypes.shape({}),
+};
+
+Registration.defaultProps = {
+  loggedInUser: null,
 };

@@ -15,14 +15,16 @@ import Registration from './Registration';
 import UserRepository from './UserRepository';
 
 export default function App() {
-  const [toast, setToast] = useState(undefined);
   const eventRepository = new EventRepository();
   const userSessionRepository = new UserSessionRepository();
   const userRepository = new UserRepository();
-  const getLoggedInUser = () => {
+  const readLoggedInUserFromCookie = () => {
     const userCookie = getCookieValue('jwt-header.payload');
     return userCookie !== null ? JSON.parse(atob(userCookie.split('.')[1])) : null;
   };
+
+  const [toast, setToast] = useState(undefined);
+  const [loggedInUser, setLoggedInUser] = useState(readLoggedInUserFromCookie());
 
   return (
     <Router>
@@ -33,8 +35,12 @@ export default function App() {
             <Nav.Link href="/events/new">Create New Event</Nav.Link>
             <Navbar.Toggle />
             <Navbar.Collapse className="justify-content-end">
-              <UserSession userSessionRepository={userSessionRepository} getLoggedInUser={getLoggedInUser} />
-              <Registration userRepository={userRepository} getLoggedInUser={getLoggedInUser} />
+              <UserSession
+                userSessionRepository={userSessionRepository}
+                loggedInUser={loggedInUser}
+                onLoginStatusChange={() => setLoggedInUser(readLoggedInUserFromCookie())}
+              />
+              <Registration userRepository={userRepository} loggedInUser={loggedInUser} />
             </Navbar.Collapse>
           </Navbar>
         </header>

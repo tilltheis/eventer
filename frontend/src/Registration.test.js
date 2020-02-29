@@ -12,14 +12,14 @@ const correctUser = {
 
 test('shows nothing if user is already logged in', async () => {
   const userRepository = new InMemoryUserRepository();
-  const { container } = render(<Registration userRepository={userRepository} getLoggedInUser={() => correctUser} />);
+  const { container } = render(<Registration userRepository={userRepository} loggedInUser={correctUser} />);
   expect(container).toBeEmpty();
 });
 
 test('sends data to the repository and renders the logout component on success', async () => {
   const userRepository = new InMemoryUserRepository();
   const { getByLabelText, getAllByText, getByText, queryByText } = render(
-    <Registration userRepository={userRepository} getLoggedInUser={() => null} />,
+    <Registration userRepository={userRepository} loggedInUser={null} />,
   );
 
   await act(async () => {
@@ -55,7 +55,7 @@ test('displays error message when data could not be submitted', async () => {
   userRepository.register = () => Promise.reject(new Error('not ok'));
 
   const { getByLabelText, getAllByText, getByText, queryByText } = render(
-    <Registration userRepository={userRepository} getLoggedInUser={() => null} />,
+    <Registration userRepository={userRepository} loggedInUser={null} />,
   );
 
   await act(async () => {

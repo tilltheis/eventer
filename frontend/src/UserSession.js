@@ -159,18 +159,25 @@ Login.propTypes = {
   userSessionRepository: userSessionRepositoryPropType.isRequired,
 };
 
-export default function UserSession({ userSessionRepository, getLoggedInUser }) {
-  const user = getLoggedInUser();
-
-  const [isLoggedIn, setLoggedIn] = useState(user !== null);
-
-  if (isLoggedIn) {
-    return <Logout user={user} onLogout={() => setLoggedIn(false)} userSessionRepository={userSessionRepository} />;
+export default function UserSession({ userSessionRepository, loggedInUser, onLoginStatusChange }) {
+  if (loggedInUser !== null) {
+    return (
+      <Logout
+        user={loggedInUser}
+        onLogout={() => onLoginStatusChange(false)}
+        userSessionRepository={userSessionRepository}
+      />
+    );
   }
-  return <Login onLogin={() => setLoggedIn(true)} userSessionRepository={userSessionRepository} />;
+  return <Login onLogin={() => onLoginStatusChange(true)} userSessionRepository={userSessionRepository} />;
 }
 
 UserSession.propTypes = {
   userSessionRepository: userSessionRepositoryPropType.isRequired,
-  getLoggedInUser: PropTypes.func.isRequired,
+  loggedInUser: PropTypes.shape({ name: PropTypes.string.isRequired }),
+  onLoginStatusChange: PropTypes.func.isRequired,
+};
+
+UserSession.defaultProps = {
+  loggedInUser: null,
 };
