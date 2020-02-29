@@ -47,7 +47,6 @@ export default function App() {
         <main>
           <Container style={{ position: 'relative' }}>
             {toast && <Toast header={toast.header} body={toast.body} />}
-
             <Switch>
               <Route exact path="/">
                 <Redirect to="/events" />
@@ -57,6 +56,9 @@ export default function App() {
               </Route>
               <Route exact path="/events/new">
                 <EventEditor setToast={setToast} eventRepository={eventRepository} />
+              </Route>
+              <Route>
+                <Redirect to="/" />
               </Route>
             </Switch>
           </Container>
