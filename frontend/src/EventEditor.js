@@ -47,8 +47,9 @@ export default class EventEditor extends React.Component {
   }
 
   handleInputChange(event) {
-    const { target } = event;
-    const { value, name } = target;
+    const {
+      target: { name, value },
+    } = event;
 
     this.setState({
       [name]: value,
@@ -72,8 +73,6 @@ export default class EventEditor extends React.Component {
     this.setState({ fsmState: FsmState.Submitting });
     this.props.eventRepository
       .create({
-        id: this.state.id,
-        hostId: this.state.hostId,
         title: this.state.title,
         description: this.state.description,
         dateTime: `${format(this.state.dateTime, "yyyy-MM-dd'T'HH:mmXXX", {

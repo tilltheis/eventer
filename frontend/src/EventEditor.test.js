@@ -1,13 +1,12 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter, Route } from 'react-router-dom';
 import EventEditor from './EventEditor';
 import InMemoryEventRepository from './test/InMemoryEventRepository';
-import { flushPromises } from './test/testUtils';
 
 // this cannot be inside of `beforeEach` or within an individual test or it won't work...
 jest.mock('react-widgets/lib/DateTimePicker', () => props => (
-  <input id={props.id} onChange={ev => props.onChange(new Date(ev.target.value))} />
+  <input id={`${props.id}_input`} onChange={ev => props.onChange(new Date(ev.target.value))} />
 ));
 // id will be set by the EventEditor to work around DropDownList impl limitations
 jest.mock('react-widgets/lib/DropdownList', () => props => (
@@ -34,11 +33,11 @@ test('calls repository with correct data and displays a toast and redirects to e
   const [redirectionPathPromise, resolveRedirectionPathPromise] = resolvablePromise();
   const [toastPromise, resolveToastPromise] = resolvablePromise();
   const eventRepository = new InMemoryEventRepository();
-  const { container } = render(
+  const { getByLabelText, getByText } = render(
     <MemoryRouter initialEntries={['/events/new']}>
       <Route
-        path="/events/new"
         exact
+        path="/events/new"
         render={() => (
           <EventEditor
             generateUuid={() => 'test uuid'}
@@ -56,24 +55,28 @@ test('calls repository with correct data and displays a toast and redirects to e
     </MemoryRouter>,
   );
 
-  expect(container.querySelector('form').checkValidity()).toBe(false);
+  expect(getByText('Create Event').form.checkValidity()).toBe(false);
 
-  fireEvent.change(container.querySelector('#title'), {
-    target: { value: 'test title' },
-  });
-  fireEvent.change(container.querySelector('#dateTime'), {
-    target: { value: new Date('2020-01-25T13:36') },
-  });
-  fireEvent.change(container.querySelector('#timeZone'), {
-    target: { value: 'Africa/Johannesburg' },
-  });
-  fireEvent.change(container.querySelector('#description'), {
-    target: { value: 'test description' },
+  await act(async () => {
+    fireEvent.change(getByLabelText('Title'), {
+      target: { value: 'test title' },
+    });
+    fireEvent.change(getByLabelText('Date & Time'), {
+      target: { value: new Date('2020-01-25T13:36') },
+    });
+    fireEvent.change(getByLabelText('Time Zone'), {
+      target: { value: 'Africa/Johannesburg' },
+    });
+    fireEvent.change(getByLabelText('Description'), {
+      target: { value: 'test description' },
+    });
   });
 
-  expect(container.querySelector('form').checkValidity()).toBe(true);
+  expect(getByText('Create Event').form.checkValidity()).toBe(true);
 
-  fireEvent.click(container.querySelector('#createEvent'));
+  await act(async () => {
+    fireEvent.click(getByText('Create Event'));
+  });
 
   expect(eventRepository.events).toEqual([correctEvent]);
   await expect(toastPromise).resolves.toBeDefined();
@@ -82,27 +85,29 @@ test('calls repository with correct data and displays a toast and redirects to e
 
 test('displays error message when data could not be submitted', async () => {
   const eventRepository = new InMemoryEventRepository({ simulateBrokenConnection: true });
-  const { container } = render(
+  const { getByLabelText, getByText, queryByText } = render(
     <EventEditor generateUuid={() => 'test uuid'} setToast={() => {}} eventRepository={eventRepository} />,
   );
 
-  fireEvent.change(container.querySelector('#title'), {
-    target: { value: 'test title' },
-  });
-  fireEvent.change(container.querySelector('#dateTime'), {
-    target: { value: new Date('2020-01-25T13:36') },
-  });
-  fireEvent.change(container.querySelector('#timeZone'), {
-    target: { value: 'Africa/Johannesburg' },
-  });
-  fireEvent.change(container.querySelector('#description'), {
-    target: { value: 'test description' },
+  await act(async () => {
+    fireEvent.change(getByLabelText('Title'), {
+      target: { value: 'test title' },
+    });
+    fireEvent.change(getByLabelText('Date & Time'), {
+      target: { value: new Date('2020-01-25T13:36') },
+    });
+    fireEvent.change(getByLabelText('Time Zone'), {
+      target: { value: 'Africa/Johannesburg' },
+    });
+    fireEvent.change(getByLabelText('Description'), {
+      target: { value: 'test description' },
+    });
   });
 
-  expect(container.innerHTML).not.toMatch('danger');
+  // separate act to let async event handlers catch up
+  await act(async () => {
+    fireEvent.click(getByText('Create Event'));
+  });
 
-  fireEvent.click(container.querySelector('#createEvent'));
-
-  await flushPromises();
-  expect(container.innerHTML).toMatch('danger');
+  expect(queryByText('Could not create event.')).not.toBeNull();
 });

@@ -6,6 +6,7 @@ import Button from 'react-bootstrap/Button';
 import Overlay from 'react-bootstrap/Overlay';
 import Alert from 'react-bootstrap/Alert';
 import Spinner from 'react-bootstrap/Spinner';
+import Nav from 'react-bootstrap/Nav';
 
 const userSessionRepositoryPropType = PropTypes.shape({
   login: PropTypes.func.isRequired,
@@ -38,7 +39,7 @@ function Logout({ user, onLogout, userSessionRepository }) {
 
   return (
     <>
-      Signed in as
+      Logged in as
       <Button style={{ verticalAlign: 'baseline' }} variant="link" ref={target} onClick={() => setShow(!show)}>
         {user.name}
       </Button>
@@ -106,18 +107,18 @@ function Login({ onLogin, userSessionRepository }) {
 
   return (
     <>
-      <Button style={{ verticalAlign: 'baseline' }} variant="link" ref={target} onClick={() => setShow(!show)}>
+      <Nav.Link style={{ verticalAlign: 'baseline' }} variant="link" ref={target} onClick={() => setShow(!show)}>
         Login
-      </Button>
+      </Nav.Link>
       <Overlay target={target.current} show={show} placement="bottom">
         {props => (
           // eslint-disable-next-line react/jsx-props-no-spreading
-          <Popover {...props} id="popover-basic">
+          <Popover {...props}>
             <Popover.Content>
               {isValid || <Alert variant="danger">Invalid credentials.</Alert>}
               <Form onSubmit={handleSubmit}>
-                <Form.Group controlId="email">
-                  <Form.Label>Email address</Form.Label>
+                <Form.Group controlId="login_email">
+                  <Form.Label>Email</Form.Label>
                   <Form.Control
                     type="email"
                     placeholder="Enter email"
@@ -126,17 +127,17 @@ function Login({ onLogin, userSessionRepository }) {
                     required
                   />
                 </Form.Group>
-                <Form.Group controlId="password">
+                <Form.Group controlId="login_password">
                   <Form.Label>Password</Form.Label>
                   <Form.Control
                     type="password"
-                    placeholder="Password"
+                    placeholder="Enter password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
                   />
                 </Form.Group>
-                <Button variant="primary" type="submit" disabled={isSending}>
+                <Button variant="primary" type="submit" style={{ width: '100%' }} disabled={isSending}>
                   {isSending && (
                     <Spinner
                       as="span"

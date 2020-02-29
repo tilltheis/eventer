@@ -6,12 +6,14 @@ export function getCookieValue(a) {
 // eg makeFsm('Foo', 'Bar') => { Foo: { name: 'Foo', isFoo: true, isBar: false}, ... }
 export function makeFsm(...stateNames) {
   return Object.freeze(
-    stateNames.reduce((states, x) => {
-      const predicates = stateNames.reduce((preds, y) => ({ ...preds, [`is${y}`]: x === y }), {});
-      return { ...states, [x]: { name: x, ...predicates } };
+    stateNames.reduce((states, name) => {
+      const predicates = stateNames.reduce((preds, other) => ({ ...preds, [`is${other}`]: name === other }), {});
+      return { ...states, [name]: { name, ...predicates } };
     }, {}),
   );
 }
+
+export const inputValueHandler = handler => event => handler(event.target.value);
 
 const okOnly = response => (response.ok ? Promise.resolve(response) : Promise.reject(new Error('not ok')));
 

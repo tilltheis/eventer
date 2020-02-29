@@ -2,7 +2,6 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import InMemoryEventRepository from './test/InMemoryEventRepository';
 import EventList from './EventList';
-import { flushPromises } from './test/testUtils';
 
 const correctEvent = {
   id: 'test uuid',
@@ -14,18 +13,17 @@ const correctEvent = {
 
 test('loads data from repository and displays it', async () => {
   const eventRepository = new InMemoryEventRepository({ initialEvents: [correctEvent] });
-  const { container } = render(<EventList eventRepository={eventRepository} />);
+  const { findByText, queryByText } = render(<EventList eventRepository={eventRepository} />);
 
-  await flushPromises();
-  expect(container.innerHTML).toMatch(correctEvent.id);
-  expect(container.innerHTML).toMatch(correctEvent.title);
+  expect(queryByText('Loading...')).not.toBeNull();
+
+  await expect(findByText(correctEvent.title)).resolves.not.toBeNull();
 });
 
 test('displays error message when data could not be loaded', async () => {
   const eventRepository = new InMemoryEventRepository({ simulateBrokenConnection: true });
-  const { container } = render(<EventList eventRepository={eventRepository} />);
+  const { findByText, queryByText } = render(<EventList eventRepository={eventRepository} />);
 
-  await flushPromises();
-  expect(container.innerHTML).not.toMatch(correctEvent.id);
-  expect(container.innerHTML).toMatch('danger');
+  await expect(findByText('Could not load events.')).resolves.not.toBeNull();
+  expect(queryByText(correctEvent.title)).toBeNull();
 });
