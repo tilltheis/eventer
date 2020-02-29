@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import Popover from 'react-bootstrap/Popover';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
-import Overlay from 'react-bootstrap/Overlay';
 import Alert from 'react-bootstrap/Alert';
 import Spinner from 'react-bootstrap/Spinner';
 import Nav from 'react-bootstrap/Nav';
+import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
+import { makeFsm } from './utils';
 
 const userSessionRepositoryPropType = PropTypes.shape({
   login: PropTypes.func.isRequired,
@@ -14,60 +15,58 @@ const userSessionRepositoryPropType = PropTypes.shape({
 });
 
 function Logout({ user, onLogout, userSessionRepository }) {
-  const [isValid, setValid] = useState(true);
-  const [isSending, setSending] = useState(false);
+  const FsmState = makeFsm('Displaying', 'Submitting', 'Succeeding', 'Failing');
+
+  const [fsmState, setFsmState] = useState(FsmState.Displaying);
 
   function handleSubmit(event) {
     event.preventDefault();
-    setSending(true);
+    setFsmState(FsmState.Submitting);
 
     userSessionRepository
       .logout()
       .then(() => {
-        setSending(false);
-        setValid(true);
+        setFsmState(FsmState.Succeeding);
         onLogout();
       })
       .catch(() => {
-        setSending(false);
-        setValid(false);
+        setFsmState(FsmState.Failing);
       });
   }
 
-  const [show, setShow] = useState(false);
-  const target = useRef(null);
+  function renderPopover() {
+    return (
+      <Popover>
+        <Popover.Content>
+          {fsmState.isFailing && <Alert variant="danger">Could not perform logout.</Alert>}
+          <Form onSubmit={handleSubmit}>
+            <Button variant="primary" type="submit" disabled={fsmState.isSubmitting}>
+              {fsmState.isSubmitting && (
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  style={{ marginRight: '.5em' }}
+                />
+              )}
+              Logout
+            </Button>
+          </Form>
+        </Popover.Content>
+      </Popover>
+    );
+  }
 
   return (
     <>
       Logged in as
-      <Button style={{ verticalAlign: 'baseline' }} variant="link" ref={target} onClick={() => setShow(!show)}>
-        {user.name}
-      </Button>
-      <Overlay target={target.current} show={show} placement="bottom">
-        {props => (
-          // eslint-disable-next-line react/jsx-props-no-spreading
-          <Popover {...props} id="popover-basic">
-            <Popover.Content>
-              {isValid || <Alert variant="danger">Could not perform logout.</Alert>}
-              <Form onSubmit={handleSubmit}>
-                <Button variant="primary" type="submit" disabled={isSending}>
-                  {isSending && (
-                    <Spinner
-                      as="span"
-                      animation="border"
-                      size="sm"
-                      role="status"
-                      aria-hidden="true"
-                      style={{ marginRight: '.5em' }}
-                    />
-                  )}
-                  Logout
-                </Button>
-              </Form>
-            </Popover.Content>
-          </Popover>
-        )}
-      </Overlay>
+      <OverlayTrigger placement="bottom" overlay={renderPopover()} trigger="click" rootClose>
+        <Button style={{ verticalAlign: 'baseline' }} variant="link">
+          {user.name}
+        </Button>
+      </OverlayTrigger>
     </>
   );
 }
@@ -79,83 +78,79 @@ Logout.propTypes = {
 };
 
 function Login({ onLogin, userSessionRepository }) {
-  const [isValid, setValid] = useState(true);
-  const [isSending, setSending] = useState(false);
+  const FsmState = makeFsm('Displaying', 'Submitting', 'Succeeding', 'Failing');
+
+  const [fsmState, setFsmState] = useState(FsmState.Displaying);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   function handleSubmit(event) {
     event.preventDefault();
-    setSending(true);
+    setFsmState(FsmState.Submitting);
 
     userSessionRepository
       .login(email, password)
       .then(() => {
-        setSending(false);
-        setValid(true);
+        setFsmState(FsmState.Succeeding);
         onLogin();
       })
       .catch(() => {
-        setSending(false);
-        setValid(false);
+        setFsmState(FsmState.Failing);
       });
   }
 
-  const [show, setShow] = useState(false);
-  const target = useRef(null);
+  function renderPopover() {
+    return (
+      <Popover>
+        <Popover.Content>
+          {fsmState.isFailing && <Alert variant="danger">Invalid credentials.</Alert>}
+          <Form onSubmit={handleSubmit}>
+            <Form.Group controlId="login_email">
+              <Form.Label>Email</Form.Label>
+              <Form.Control
+                type="email"
+                placeholder="Enter email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
+            </Form.Group>
+            <Form.Group controlId="login_password">
+              <Form.Label>Password</Form.Label>
+              <Form.Control
+                type="password"
+                placeholder="Enter password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+              />
+            </Form.Group>
+            <Button variant="primary" type="submit" style={{ width: '100%' }} disabled={fsmState.isSubmitting}>
+              {fsmState.isSubmitting && (
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  style={{ marginRight: '.5em' }}
+                />
+              )}
+              Login
+            </Button>
+          </Form>
+        </Popover.Content>
+      </Popover>
+    );
+  }
 
   return (
-    <>
-      <Nav.Link style={{ verticalAlign: 'baseline' }} variant="link" ref={target} onClick={() => setShow(!show)}>
+    <OverlayTrigger placement="bottom" overlay={renderPopover()} trigger="click" rootClose>
+      <Nav.Link style={{ verticalAlign: 'baseline' }} variant="link">
         Login
       </Nav.Link>
-      <Overlay target={target.current} show={show} placement="bottom">
-        {props => (
-          // eslint-disable-next-line react/jsx-props-no-spreading
-          <Popover {...props}>
-            <Popover.Content>
-              {isValid || <Alert variant="danger">Invalid credentials.</Alert>}
-              <Form onSubmit={handleSubmit}>
-                <Form.Group controlId="login_email">
-                  <Form.Label>Email</Form.Label>
-                  <Form.Control
-                    type="email"
-                    placeholder="Enter email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                  />
-                </Form.Group>
-                <Form.Group controlId="login_password">
-                  <Form.Label>Password</Form.Label>
-                  <Form.Control
-                    type="password"
-                    placeholder="Enter password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                  />
-                </Form.Group>
-                <Button variant="primary" type="submit" style={{ width: '100%' }} disabled={isSending}>
-                  {isSending && (
-                    <Spinner
-                      as="span"
-                      animation="border"
-                      size="sm"
-                      role="status"
-                      aria-hidden="true"
-                      style={{ marginRight: '.5em' }}
-                    />
-                  )}
-                  Login
-                </Button>
-              </Form>
-            </Popover.Content>
-          </Popover>
-        )}
-      </Overlay>
-    </>
+    </OverlayTrigger>
   );
 }
 
