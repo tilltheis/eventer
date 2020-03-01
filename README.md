@@ -7,7 +7,7 @@ This is a playground to get to know [ZIO](https://zio.dev/) and [React](https://
 
 ## Prerequisites
 
-`docker`, `docker-compose` and `sbt` must be installed.
+`docker`, `docker-compose`, `sbt` `npm` must be installed.
 
 
 ## Run Locally
