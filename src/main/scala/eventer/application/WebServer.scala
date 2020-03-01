@@ -61,8 +61,8 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
       jwtSignature <- UIO(request.cookies.find(_.name == JwtSignatureCookieName).map(_.content)).get
       jwtHeaderAndPayload <- UIO(Some(jwtHeaderPayload).map(_.split('.')).collect { case Array(x, y) => (x, y) }).get
       (jwtHeader, jwtPayload) = jwtHeaderAndPayload
-      contentJson <- sessionService.decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature).get
-      sessionUser <- UIO(io.circe.parser.decode[SessionUser](contentJson).toOption).get
+      contentJson <- sessionService.decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
+      sessionUser <- UIO.succeed(io.circe.parser.decode[SessionUser](contentJson).toOption).get
     } yield sessionUser
     OptionT(sessionUserM.option)
   }
@@ -98,7 +98,7 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
 
         for {
           loginRequest <- request.as[LoginRequest]
-          sessionUserOption <- sessionService.login(loginRequest)
+          sessionUserOption <- sessionService.login(loginRequest).option
           response <- sessionUserOption.fold(Forbidden())(successResponse)
         } yield response
 
@@ -107,7 +107,7 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
           registrationRequest <- request.as[RegistrationRequest]
           id <- generateUserId
           passwordHash <- cryptoHashing.hash(registrationRequest.password)
-          _ <- userRepository.create(registrationRequest.toUser(id, passwordHash))
+          _ <- userRepository.create(registrationRequest.toUser(id, passwordHash)).option
           response <- Created() // always pretend to have created an account to not leak data
         } yield response
     }

@@ -4,13 +4,13 @@ import eventer.infrastructure.{DatabaseContext, DatabaseProvider, TestDatabasePr
 import zio.blocking.Blocking
 import zio.test.environment.TestEnvironment
 import zio.test.{TestFailure, TestResult, ZSpec, testM}
-import zio.{Cause, Task, ZIO, ZManaged}
+import zio.{Task, ZIO, ZManaged}
 
 package object eventer {
-  type TestEnvSpec = ZSpec[TestEnvironment, Throwable, String, Unit]
+  type TestEnvSpec = ZSpec[TestEnvironment, Any, String, Unit]
 
-  final def dbTestM[L](label: L)(
-      assertion: => ZIO[DatabaseContext with Blocking, Throwable, TestResult]): ZSpec[Blocking, Throwable, L, Unit] =
+  final def dbTestM[E, L](label: L)(
+      assertion: => ZIO[DatabaseContext with Blocking, E, TestResult]): ZSpec[Blocking, E, L, Unit] =
     someDbTestM { ctx =>
       ZManaged.environment[Blocking].map { env =>
         new DatabaseContext with Blocking {
@@ -20,16 +20,15 @@ package object eventer {
       }
     }(label)(assertion)
 
-  final def someDbTestM[R0 <: Blocking, R <: DatabaseContext with Blocking, L](
-      makeEnv: DatabaseContext => ZManaged[R0, TestFailure[Throwable], R])(label: L)(
-      assertion: => ZIO[R, Throwable, TestResult]): ZSpec[R0, Throwable, L, Unit] =
+  final def someDbTestM[R0 <: Blocking, R <: DatabaseContext with Blocking, E, L](
+      makeEnv: DatabaseContext => ZManaged[R0, TestFailure[E], R])(label: L)(
+      assertion: => ZIO[R, E, TestResult]): ZSpec[R0, E, L, Unit] =
     testM(label)(assertion).provideSomeManaged(managedDatabaseContext.flatMap(makeEnv))
 
-  private val managedDatabaseContext: ZManaged[Blocking, TestFailure[Throwable], DatabaseContext] =
+  private def managedDatabaseContext[E]: ZManaged[Blocking, TestFailure[E], DatabaseContext] =
     ZManaged
       .environment[DatabaseProvider]
       .flatMap(_.databaseProvider.database)
-      .mapError(e => TestFailure.Runtime(Cause.fail(e)))
       .provideSome[Blocking] { envBlocking =>
         new TestDatabaseProvider.WithDroppedSchemaAndMigration("quill") with Blocking {
           override val blocking: Blocking.Service[Any] = envBlocking.blocking

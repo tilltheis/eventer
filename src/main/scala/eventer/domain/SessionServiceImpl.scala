@@ -3,10 +3,11 @@ package eventer.domain
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
+import eventer.domain.SessionService.{InvalidCredentials, InvalidJwtFormat}
 import javax.crypto.SecretKey
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtOptions}
 import zio.clock.Clock
-import zio.{RIO, UIO, URIO, ZIO}
+import zio.{URIO, ZIO}
 
 object SessionServiceImpl {
   val JwtSigningAlgorithm: String = JwtAlgorithm.HS256.fullName
@@ -16,13 +17,11 @@ class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
                                     cryptoHashing: CryptoHashing[HashT],
                                     jwtSigningKey: SecretKey)
     extends SessionService[R] {
-  override def login(loginRequest: LoginRequest): RIO[R, Option[SessionUser]] =
-    userRepository.findByEmail(loginRequest.email).flatMap { userOption =>
-      (for {
-        user <- UIO(userOption).get
-        _ <- cryptoHashing.verify(loginRequest.password, user.passwordHash).filterOrFail(identity)(())
-      } yield user.toSessionUser).option
-    }
+  override def login(loginRequest: LoginRequest): ZIO[R, InvalidCredentials.type, SessionUser] =
+    for {
+      user <- userRepository.findByEmail(loginRequest.email).someOrFail(InvalidCredentials)
+      _ <- cryptoHashing.verify(loginRequest.password, user.passwordHash).filterOrFail(identity)(InvalidCredentials)
+    } yield user.toSessionUser
 
   override def encodedJwtHeaderPayloadSignature(content: String,
                                                 expiresAt: Instant): URIO[Clock, (String, String, String)] =
@@ -34,13 +33,19 @@ class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
 
   override def decodedJwtHeaderPayloadSignature(header: String,
                                                 payload: String,
-                                                signature: String): URIO[Clock, Option[String]] = {
-    ZIO.accessM[Clock](_.clock.currentTime(TimeUnit.SECONDS)).map { now =>
-      Jwt
-        .decode(s"$header.$payload.$signature", jwtSigningKey, Seq(JwtAlgorithm.HS256), JwtOptions(expiration = false))
-        .filter(_.expiration.forall(_ > now))
-        .map(_.content)
-        .toOption
-    }
+                                                signature: String): ZIO[Clock, InvalidJwtFormat.type, String] = {
+    ZIO
+      .accessM[Clock](_.clock.currentTime(TimeUnit.SECONDS))
+      .map { now =>
+        Jwt
+          .decode(s"$header.$payload.$signature",
+                  jwtSigningKey,
+                  Seq(JwtAlgorithm.HS256),
+                  JwtOptions(expiration = false))
+          .filter(_.expiration.forall(_ > now))
+          .map(_.content)
+          .toOption
+      }
+      .someOrFail(InvalidJwtFormat)
   }
 }

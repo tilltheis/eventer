@@ -2,6 +2,7 @@ package eventer.infrastructure
 
 import java.util.UUID
 
+import eventer.domain.UserRepository.EmailAlreadyInUse
 import eventer.domain.{TestData, User, UserId}
 import eventer.{TestEnvSpec, dbTestM}
 import zio.RIO
@@ -16,16 +17,24 @@ object DbUserRepositorySpec {
   private val findAll: RIO[DatabaseContext with Blocking, Seq[User[String]]] = withCtx { ctx =>
     import ctx._
     val q = quote(query[User[String]])
-    performEffect(runIO(q))
+    performEffect(runIO(q)).orDie
   }
 
   lazy val spec: TestEnvSpec = suite("DbUserRepository")(
-    suite("create")(dbTestM("inserts the given user into the DB") {
-      for {
-        _ <- userRepository.create(TestData.user)
-        foundUsers <- findAll
-      } yield assert(foundUsers, equalTo(Seq(TestData.user)))
-    }),
+    suite("create")(
+      dbTestM("inserts the given user into the DB") {
+        for {
+          _ <- userRepository.create(TestData.user)
+          foundUsers <- findAll
+        } yield assert(foundUsers, equalTo(Seq(TestData.user)))
+      },
+      dbTestM("fails if another account with the same email already exists") {
+        for {
+          _ <- userRepository.create(TestData.user)
+          insertError <- userRepository.create(TestData.user.copy(id = TestData.otherUserId)).flip
+        } yield assert(insertError, equalTo(EmailAlreadyInUse))
+      }
+    ),
     suite("findByEmail")(
       dbTestM("returns the user with the given email address if it exists") {
         for {

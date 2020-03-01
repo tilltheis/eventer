@@ -37,4 +37,8 @@ package object infrastructure {
       f: DatabaseContext.Service => ZIO[R, E, A]): ZIO[R, E, A] =
     ZIO.accessM(x => f(x.databaseContext))
 
+  object PostgresSqlState {
+    val UniqueViolation = "23505"
+  }
+
 }

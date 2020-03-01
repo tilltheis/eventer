@@ -1,10 +1,11 @@
 package eventer.domain
 
 import eventer.domain.InMemoryUserRepository.State
-import zio.{RIO, Ref, UIO, URIO}
+import eventer.domain.UserRepository.EmailAlreadyInUse
+import zio.{RIO, Ref, UIO, URIO, ZIO}
 
 class InMemoryUserRepository extends UserRepository[State, String] {
-  override def create(user: User[String]): URIO[State, Unit] =
+  override def create(user: User[String]): ZIO[State, EmailAlreadyInUse.type, Unit] =
     RIO.accessM[State](_.userRepositoryStateRef.update(_ + user)).unit
 
   override def findByEmail(email: String): URIO[State, Option[User[String]]] =

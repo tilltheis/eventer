@@ -9,7 +9,7 @@ import eventer.domain.{BlowfishCryptoHashing, EventId, SessionServiceImpl, User,
 import eventer.infrastructure._
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{RManaged, UIO, ZIO, ZManaged}
+import zio.{RManaged, UIO, URManaged, ZIO, ZManaged}
 
 final case class ServerConfig(port: Int, jwtSigningKeyBase64: String, csrfSigningKeyBase64: String)
 final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
@@ -20,7 +20,7 @@ object Main extends zio.App with LazyLogging {
   lazy val mainEnvironment: MainEnvironment = new Clock.Live with Blocking.Live with DatabaseProvider
   with ConfigProvider.Live {
     override def databaseProvider: DatabaseProvider.Service = new DatabaseProvider.Service {
-      override def database: RManaged[Blocking, DatabaseContext] =
+      override def database: URManaged[Blocking, DatabaseContext] =
         for {
           config <- ZManaged.fromEffect(configProvider.config)
           databaseContext <- new DatabaseProvider.WithMigration(config.db.quillConfigKey).databaseProvider.database
@@ -55,6 +55,7 @@ object Main extends zio.App with LazyLogging {
               "example@example.org",
               BlowfishHash.unsafeFromHashString("$2a$10$d.vQEHwPIqtSYWQOMtg7LuZgTOx1R/2sOLnqCUkpixkXJ1paUhEIm")
             ))
+            .option
             .absorb
             .catchAll(_ => ZIO.unit) // catch duplicate insert exceptions
             .provide(appEnv)

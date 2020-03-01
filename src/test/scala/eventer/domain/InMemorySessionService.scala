@@ -3,12 +3,13 @@ package eventer.domain
 import java.time.Instant
 
 import eventer.domain.InMemorySessionService.State
+import eventer.domain.SessionService.{InvalidCredentials, InvalidJwtFormat}
 import zio.clock.Clock
-import zio.{RIO, Ref, UIO, URIO}
+import zio._
 
 class InMemorySessionService extends SessionService[State] {
-  override def login(loginRequest: LoginRequest): RIO[State, Option[SessionUser]] =
-    RIO.accessM[State](_.sessionServiceStateRef.get).map(_.get(loginRequest))
+  override def login(loginRequest: LoginRequest): ZIO[State, InvalidCredentials.type, SessionUser] =
+    RIO.accessM[State](_.sessionServiceStateRef.get).map(_.get(loginRequest)).someOrFail(InvalidCredentials)
 
   override def encodedJwtHeaderPayloadSignature(content: String,
                                                 expiresAt: Instant): URIO[Clock, (String, String, String)] =
@@ -16,8 +17,8 @@ class InMemorySessionService extends SessionService[State] {
 
   override def decodedJwtHeaderPayloadSignature(header: String,
                                                 payload: String,
-                                                signature: String): URIO[Clock, Option[String]] =
-    eventer.base64Decode(payload).option
+                                                signature: String): ZIO[Clock, InvalidJwtFormat.type, String] =
+    eventer.base64Decode(payload).mapError(_ => InvalidJwtFormat)
 }
 
 object InMemorySessionService {

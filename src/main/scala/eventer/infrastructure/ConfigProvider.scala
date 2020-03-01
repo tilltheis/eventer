@@ -2,7 +2,7 @@ package eventer.infrastructure
 
 import eventer.Config
 import pureconfig.ConfigSource
-import zio.Task
+import zio.UIO
 
 trait ConfigProvider {
   def configProvider: ConfigProvider.Service
@@ -10,14 +10,14 @@ trait ConfigProvider {
 
 object ConfigProvider {
   trait Service {
-    def config: Task[Config]
+    def config: UIO[Config]
   }
 
   trait Live extends ConfigProvider {
     override def configProvider: Service = new Service {
-      override val config: Task[Config] = {
+      override val config: UIO[Config] = {
         import pureconfig.generic.auto._
-        Task.effect(ConfigSource.default.at("eventer").loadOrThrow[Config])
+        UIO(ConfigSource.default.at("eventer").loadOrThrow[Config])
       }
     }
   }

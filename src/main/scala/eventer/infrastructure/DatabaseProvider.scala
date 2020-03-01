@@ -2,7 +2,7 @@ package eventer.infrastructure
 
 import org.flywaydb.core.Flyway
 import zio.blocking.Blocking
-import zio.{RManaged, Task, ZManaged}
+import zio.{UIO, URManaged, ZManaged}
 
 trait DatabaseProvider {
   def databaseProvider: DatabaseProvider.Service
@@ -10,21 +10,21 @@ trait DatabaseProvider {
 
 object DatabaseProvider {
   trait Service {
-    def database: RManaged[Blocking, DatabaseContext]
+    def database: URManaged[Blocking, DatabaseContext]
   }
 
   class Simple(quillConfigKey: String) extends DatabaseProvider {
     override def databaseProvider: Service = new Service {
-      override val database: RManaged[Blocking, DatabaseContext] =
+      override val database: URManaged[Blocking, DatabaseContext] =
         ZManaged
-          .fromAutoCloseable(Task(new DatabaseContext.Service(quillConfigKey) {}))
+          .fromAutoCloseable(UIO(new DatabaseContext.Service(quillConfigKey) {}))
           .map(new DatabaseContext.Live(_))
     }
   }
 
   class WithMigration(quillConfigKey: String) extends Simple(quillConfigKey) {
     override val databaseProvider: Service = new Service {
-      override val database: RManaged[Blocking, DatabaseContext] =
+      override val database: URManaged[Blocking, DatabaseContext] =
         WithMigration.super.databaseProvider.database.mapM { db =>
           def migrate() =
             Flyway
@@ -33,7 +33,7 @@ object DatabaseProvider {
               .dataSource(db.databaseContext.dataSource)
               .load()
               .migrate()
-          zio.blocking.blocking(Task(migrate())).map(_ => db)
+          zio.blocking.blocking(UIO(migrate())).map(_ => db)
         }
     }
   }
