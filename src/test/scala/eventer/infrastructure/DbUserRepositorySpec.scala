@@ -14,6 +14,7 @@ object DbUserRepositorySpec {
   private val userRepository = new DbUserRepository[String](identity, identity)
   private val otherId = UserId(UUID.fromString("b2bb6af3-76b1-4116-944f-5efe2b448357"))
   private val otherEmail = "other-email"
+
   private val findAll: RIO[DatabaseContext with Blocking, Seq[User[String]]] = withCtx { ctx =>
     import ctx._
     val q = quote(query[User[String]])
@@ -31,7 +32,7 @@ object DbUserRepositorySpec {
       dbTestM("fails if an account with the same email already exists") {
         for {
           _ <- userRepository.create(TestData.user)
-          insertError <- userRepository.create(TestData.user.copy(id = TestData.otherUserId)).flip
+          insertError <- userRepository.create(TestData.user.copy(id = otherId)).flip
         } yield assert(insertError, equalTo(EmailAlreadyInUse))
       }
     ),
