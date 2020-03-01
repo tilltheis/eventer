@@ -60,7 +60,13 @@ object Main extends zio.App with LazyLogging {
           jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, SessionServiceImpl.JwtSigningAlgorithm)
           csrfKey <- util.secretKeyFromBase64(config.server.csrfSigningKeyBase64, WebServer.CsrfSigningAlgorithm)
           sessionService = new SessionServiceImpl(userRepository, cryptoHashing, jwtKey)
-          webServer = new WebServer(eventRepository, sessionService, UIO(EventId(UUID.randomUUID())), csrfKey)
+          webServer = new WebServer(eventRepository,
+                                    sessionService,
+                                    userRepository,
+                                    cryptoHashing,
+                                    UIO(EventId(UUID.randomUUID())),
+                                    UIO(UserId(UUID.randomUUID())),
+                                    csrfKey)
           serving <- webServer.serve(config.server.port).provide(appEnv)
         } yield serving
       }

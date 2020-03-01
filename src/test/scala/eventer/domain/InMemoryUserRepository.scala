@@ -5,20 +5,20 @@ import zio.{RIO, Ref, UIO}
 
 class InMemoryUserRepository extends UserRepository[State, String] {
   override def create(user: User[String]): RIO[State, Unit] =
-    RIO.accessM[State](_.sessionServiceStateRef.update(_ + user)).unit
+    RIO.accessM[State](_.userRepositoryStateRef.update(_ + user)).unit
 
   override def findByEmail(email: String): RIO[State, Option[User[String]]] =
-    RIO.accessM[State](_.sessionServiceStateRef.get).map(_.find(_.email == email))
+    RIO.accessM[State](_.userRepositoryStateRef.get).map(_.find(_.email == email))
 }
 
 object InMemoryUserRepository {
   trait State {
-    def sessionServiceStateRef: Ref[Set[User[String]]]
+    def userRepositoryStateRef: Ref[Set[User[String]]]
   }
 
   def makeState(state: Set[User[String]]): UIO[State] = Ref.make(state).map { x =>
     new State {
-      override val sessionServiceStateRef: Ref[Set[User[String]]] = x
+      override val userRepositoryStateRef: Ref[Set[User[String]]] = x
     }
   }
 

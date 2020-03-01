@@ -1,10 +1,10 @@
 package eventer.application
 
 import cats.effect.Sync
-import eventer.domain.{Event, EventCreationRequest, EventId, LoginRequest, SessionUser, UserId}
-import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import eventer.domain._
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder}
+import io.circe.{Codec, Decoder, Encoder}
 import org.http4s.circe.{jsonEncoderOf, jsonOf}
 import org.http4s.{EntityDecoder, EntityEncoder}
 
@@ -15,17 +15,11 @@ class Codecs[F[_]: Sync] {
   implicit val userIdEncoder: Encoder[UserId] = _.id.toString.asJson
   implicit val userIdDecoder: Decoder[UserId] = Decoder.decodeUUID.map(UserId)
 
-  implicit val eventEncoder: Encoder[Event] = deriveEncoder
-  implicit val eventDecoder: Decoder[Event] = deriveDecoder
-
-  implicit val eventCreationRequestEncoder: Encoder[EventCreationRequest] = deriveEncoder
-  implicit val eventCreationRequestDecoder: Decoder[EventCreationRequest] = deriveDecoder
-
-  implicit val loginRequestEncoder: Encoder[LoginRequest] = deriveEncoder
-  implicit val loginRequestDecoder: Decoder[LoginRequest] = deriveDecoder
-
-  implicit val sessionUserEncoder: Encoder[SessionUser] = deriveEncoder
-  implicit val sessionUserDecoder: Decoder[SessionUser] = deriveDecoder
+  implicit val eventCodec: Codec[Event] = deriveCodec
+  implicit val eventCreationRequestCodec: Codec[EventCreationRequest] = deriveCodec
+  implicit val registrationRequestCodec: Codec[RegistrationRequest] = deriveCodec
+  implicit val loginRequestCodec: Codec[LoginRequest] = deriveCodec
+  implicit val sessionUserCodec: Codec[SessionUser] = deriveCodec
 
   implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]): EntityDecoder[F, A] = jsonOf[F, A]
   implicit def circeJsonEncoder[A](implicit decoder: Encoder[A]): EntityEncoder[F, A] = jsonEncoderOf[F, A]

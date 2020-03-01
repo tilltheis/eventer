@@ -21,7 +21,7 @@ class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
       (for {
         user <- UIO(userOption).get
         _ <- cryptoHashing.verify(loginRequest.password, user.passwordHash).filterOrFail(identity)(())
-      } yield SessionUser(user.id, user.name, user.email)).option
+      } yield user.toSessionUser).option
     }
 
   override def encodedJwtHeaderPayloadSignature(content: String,

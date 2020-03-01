@@ -29,10 +29,13 @@ object WebServer {
   private[application] val CsrfTokenHeaderName = "X-Csrf-Token"
 }
 
-class WebServer[R](eventRepository: EventRepository[R],
-                   sessionService: SessionService[R],
-                   generateEventId: UIO[EventId],
-                   csrfKey: SecretKey) {
+class WebServer[R, HashT](eventRepository: EventRepository[R],
+                          sessionService: SessionService[R],
+                          userRepository: UserRepository[R, HashT],
+                          cryptoHashing: CryptoHashing[HashT],
+                          generateEventId: UIO[EventId],
+                          generateUserId: UIO[UserId],
+                          csrfKey: SecretKey) {
   type IO[A] = RIO[R with Clock, A]
   type OptionTIO = { type T[A] = OptionT[IO, A] }
 
@@ -96,6 +99,15 @@ class WebServer[R](eventRepository: EventRepository[R],
           sessionUserOption <- sessionService.login(loginRequest)
           response <- sessionUserOption.fold(Forbidden())(successResponse)
         } yield response
+
+      case request @ POST -> Root / "users" =>
+        for {
+          registrationRequest <- request.as[RegistrationRequest]
+          id <- generateUserId
+          passwordHash <- cryptoHashing.hash(registrationRequest.password)
+          _ <- userRepository.create(registrationRequest.toUser(id, passwordHash))
+          response <- Created() // always pretend to have created an account to not leak data
+        } yield response
     }
 
     val authedRoutes = AuthedRoutes.of[SessionUser, IO] {
@@ -123,6 +135,11 @@ class WebServer[R](eventRepository: EventRepository[R],
       : Middleware[OptionTIO#T, AuthedRequest[IO, SessionUser], Response[IO], Request[IO], Response[IO]] =
       AuthMiddleware.noSpider(authUser, _ => Forbidden())
 
+    // Having CSRF is more like an additional safety net because we're only planning to have an SPA and that is
+    // practically safe against CSRF attacks. The CSRF attack vector only opens when we allow
+    // `application/x-www-form-urlencoded` instead of `application/json`.
+    // However, HTTP4S currently ignores the content type when decoding requests as JSON and I don't know how to change
+    // that. Until either problem is solved we actually have to have the CSRF token in order to be safe.
     val csrfMiddleware: Middleware[OptionTIO#T, Request[IO], Response[IO], Request[IO], Response[IO]] = csrf.validate()
 
     csrfMiddleware(publicRoutes <+> authMiddleware(authedRoutes)).orNotFound

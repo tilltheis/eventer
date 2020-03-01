@@ -25,11 +25,22 @@ object WebServerSpec {
     trait CsrfTokenGeneratorState { val csrfTokenGeneratorStateRef: Ref[Iterator[String]] }
     val eventRepository = new InMemoryEventRepository
     val sessionService = new InMemorySessionService
+    val userRepository = new InMemoryUserRepository
+    val cryptoHashing = new PlaintextCryptoHashing
     private val keyString = "DXfXgmx9lLTh+25+VfxOMo+uiRdTm47yHNoVu41/jZFWYeXQY+J6ZRwWByrH59SaKQ5PNiXEv25xakqqm9xwAg=="
     val csrfKey = eventer.util.unsafeSecretKeyFromBase64(keyString, WebServer.CsrfSigningAlgorithm)
-    val webServer = new WebServer(eventRepository, sessionService, UIO.succeed(TestData.eventId), csrfKey)
+    val webServer = new WebServer(eventRepository,
+                                  sessionService,
+                                  userRepository,
+                                  cryptoHashing,
+                                  UIO.succeed(TestData.eventId),
+                                  UIO.succeed(TestData.userId),
+                                  csrfKey)
 
-    type R = Clock with InMemoryEventRepository.State with InMemorySessionService.State
+    type R = Clock
+      with InMemoryEventRepository.State
+      with InMemorySessionService.State
+      with InMemoryUserRepository.State
     type IO[A] = webServer.IO[A]
 
     val codecs = new Codecs[IO]
@@ -49,17 +60,21 @@ object WebServerSpec {
 
     def makeState(
         eventRepositoryStateM: UIO[InMemoryEventRepository.State] = InMemoryEventRepository.emptyState,
-        sessionServiceStateM: UIO[InMemorySessionService.State] = InMemorySessionService.emptyState): URIO[Clock, R] =
+        sessionServiceStateM: UIO[InMemorySessionService.State] = InMemorySessionService.emptyState,
+        userRepositoryStateM: UIO[InMemoryUserRepository.State] = InMemoryUserRepository.emptyState): URIO[Clock, R] =
       for {
         eventState <- eventRepositoryStateM
         sessionServiceState <- sessionServiceStateM
+        userServiceState <- userRepositoryStateM
         envClock <- ZIO.environment[Clock]
       } yield
-        new Clock with InMemoryEventRepository.State with InMemorySessionService.State {
+        new Clock with InMemoryEventRepository.State with InMemorySessionService.State
+        with InMemoryUserRepository.State {
           override val clock: Clock.Service[Any] = envClock.clock
           override def eventRepositoryStateRef: Ref[Seq[Event]] = eventState.eventRepositoryStateRef
           override def sessionServiceStateRef: Ref[Map[LoginRequest, SessionUser]] =
             sessionServiceState.sessionServiceStateRef
+          override def userRepositoryStateRef: Ref[Set[User[String]]] = userServiceState.userRepositoryStateRef
         }
 
     def parseResponseBody[A](response: Response[IO])(implicit F: MonadError[IO, Throwable],
@@ -92,7 +107,13 @@ object WebServerSpec {
         val fixture = new Fixture
         import fixture._
 
-        val webServer2 = new WebServer(eventRepository, sessionService, UIO.succeed(TestData.eventId), csrfKey)
+        val webServer2 = new WebServer(eventRepository,
+                                       sessionService,
+                                       userRepository,
+                                       cryptoHashing,
+                                       UIO.succeed(TestData.eventId),
+                                       UIO.succeed(TestData.userId),
+                                       csrfKey)
 
         for {
           state <- makeState()
@@ -123,6 +144,7 @@ object WebServerSpec {
         val fixture = new Fixture
         import fixture._
         import codecs._
+
         val responseM = webServer.routes.run(Request(Method.POST, uri"/events").withEntity(TestData.event))
         for {
           state <- makeState()
@@ -130,8 +152,40 @@ object WebServerSpec {
         } yield assert(response.status, equalTo(Status.Forbidden))
       }
     ),
+    suite("POST /users")(
+      testM("inserts the new user into the repository and sends an account confirmation email to them") {
+        val fixture = new Fixture
+        import fixture._
+        import codecs._
+
+        for {
+          state <- makeState()
+          request <- CsrfRequestM(Method.POST, uri"/users").map(_.withEntity(TestData.registrationRequest))
+          response <- webServer.routes.run(request).provide(state)
+          body <- parseResponseBody[Unit](response).provide(state)
+          finalUserRepoState <- state.userRepositoryStateRef.get
+        } yield
+          assert(response.status, equalTo(Status.Created)) &&
+            assert(body, isNone) &&
+            assert(finalUserRepoState, equalTo(Set(TestData.user)))
+      },
+      testM("returns created even if a user with the same email address already exists") {
+        val fixture = new Fixture
+        import fixture._
+        import codecs._
+
+        for {
+          state <- makeState(userRepositoryStateM = InMemoryUserRepository.makeState(Set(TestData.user)))
+          request <- CsrfRequestM(Method.POST, uri"/users").map(_.withEntity(TestData.registrationRequest))
+          response <- webServer.routes.run(request).provide(state)
+          finalUserRepoState <- state.userRepositoryStateRef.get
+        } yield
+          assert(response.status, equalTo(Status.Created)) &&
+            assert(finalUserRepoState, equalTo(Set(TestData.user)))
+      }
+    ),
     suite("POST /session")(
-      testM("returns the user details if the credentials are correct") {
+      testM("logs in the user if the credentials are correct and sets the session cookie") {
         val fixture = new Fixture
         import fixture._
         import codecs._

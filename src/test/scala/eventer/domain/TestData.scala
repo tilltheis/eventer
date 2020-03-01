@@ -26,6 +26,8 @@ object TestData {
 
   val user: User[String] = User(userId, "name", "email", "password")
 
+  val registrationRequest: RegistrationRequest = RegistrationRequest(user.name, user.email, user.passwordHash)
+
   val loginRequest: LoginRequest = LoginRequest(user.email, user.passwordHash)
   val sessionUser: SessionUser = SessionUser(userId, user.name, user.email)
 }
