@@ -17,8 +17,9 @@ class DbUserRepository[HashT](encodePasswordHash: HashT => String, decodePasswor
       import ctx._
       val q = quote(query[User[HashT]].insert(lift(user)))
       performEffect_(runIO(q)).catchAll {
-        case e: PSQLException if e.getSQLState == PostgresSqlState.UniqueViolation => ZIO.fail(EmailAlreadyInUse)
-        case e                                                                     => ZIO.die(e)
+        case e: PSQLException if e.getSQLState == PostgresSqlState.UniqueViolation && e.getMessage.contains("email") =>
+          ZIO.fail(EmailAlreadyInUse)
+        case e => ZIO.die(e)
       }
   }
 

@@ -28,7 +28,7 @@ object DbUserRepositorySpec {
           foundUsers <- findAll
         } yield assert(foundUsers, equalTo(Seq(TestData.user)))
       },
-      dbTestM("fails if another account with the same email already exists") {
+      dbTestM("fails if an account with the same email already exists") {
         for {
           _ <- userRepository.create(TestData.user)
           insertError <- userRepository.create(TestData.user.copy(id = TestData.otherUserId)).flip
