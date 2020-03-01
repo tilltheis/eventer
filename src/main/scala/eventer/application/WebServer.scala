@@ -3,6 +3,7 @@ package eventer.application
 import cats.MonoidK.ops.toAllMonoidKOps
 import cats.data.{Kleisli, OptionT}
 import cats.effect.ExitCode
+import com.typesafe.scalalogging.StrictLogging
 import eventer.application.WebServer._
 import eventer.domain._
 import io.circe.syntax.EncoderOps
@@ -35,7 +36,8 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
                           cryptoHashing: CryptoHashing[HashT],
                           generateEventId: UIO[EventId],
                           generateUserId: UIO[UserId],
-                          csrfKey: SecretKey) {
+                          csrfKey: SecretKey)
+    extends StrictLogging {
   type IO[A] = RIO[R with Clock, A]
   type OptionTIO = { type T[A] = OptionT[IO, A] }
 
@@ -150,7 +152,12 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
     ZIO.runtime[R with Clock].flatMap { implicit clock =>
       BlazeServerBuilder[IO]
         .bindHttp(port, "0.0.0.0")
-        .withHttpApp(routes)
+        .withHttpApp(routes.mapF(_.absorb))
+        .withServiceErrorHandler(request => {
+          case throwable =>
+            logger.error(s"Error handling request ${request.method} ${request.uri}", throwable)
+            UIO.succeed(Response(Status.InternalServerError))
+        })
         .serve
         .compile[IO, IO, ExitCode]
         .drain

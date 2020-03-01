@@ -55,6 +55,7 @@ object Main extends zio.App with LazyLogging {
               "example@example.org",
               BlowfishHash.unsafeFromHashString("$2a$10$d.vQEHwPIqtSYWQOMtg7LuZgTOx1R/2sOLnqCUkpixkXJ1paUhEIm")
             ))
+            .absorb
             .catchAll(_ => ZIO.unit) // catch duplicate insert exceptions
             .provide(appEnv)
           jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, SessionServiceImpl.JwtSigningAlgorithm)

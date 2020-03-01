@@ -1,9 +1,9 @@
 package eventer.domain
 
-import zio.RIO
+import zio.URIO
 
 trait EventRepository[-R] {
-  def create(event: Event): RIO[R, Unit]
-  def findAll: RIO[R, Seq[Event]]
-  def findById(id: EventId): RIO[R, Option[Event]]
+  def create(event: Event): URIO[R, Unit]
+  def findAll: URIO[R, Seq[Event]]
+  def findById(id: EventId): URIO[R, Option[Event]]
 }
