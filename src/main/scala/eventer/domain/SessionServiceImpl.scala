@@ -25,7 +25,7 @@ class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
 
   override def encodedJwtHeaderPayloadSignature(content: String,
                                                 expiresAt: Instant): URIO[Clock, (String, String, String)] =
-    ZIO.accessM[Clock](_.clock.currentTime(TimeUnit.SECONDS)).map { now =>
+    ZIO.accessM[Clock](_.get.currentTime(TimeUnit.SECONDS)).map { now =>
       val claim = JwtClaim(content, issuedAt = Some(now), expiration = Some(expiresAt.getEpochSecond))
       val Array(header, payload, signature) = Jwt.encode(claim, jwtSigningKey, JwtAlgorithm.HS256).split('.')
       (header, payload, signature)
@@ -35,7 +35,7 @@ class SessionServiceImpl[-R, HashT](userRepository: UserRepository[R, HashT],
                                                 payload: String,
                                                 signature: String): ZIO[Clock, InvalidJwtFormat.type, String] = {
     ZIO
-      .accessM[Clock](_.clock.currentTime(TimeUnit.SECONDS))
+      .accessM[Clock](_.get.currentTime(TimeUnit.SECONDS))
       .map { now =>
         Jwt
           .decode(s"$header.$payload.$signature",

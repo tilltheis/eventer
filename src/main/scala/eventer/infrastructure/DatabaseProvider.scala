@@ -2,39 +2,36 @@ package eventer.infrastructure
 
 import org.flywaydb.core.Flyway
 import zio.blocking.Blocking
-import zio.{UIO, URManaged, ZManaged}
-
-trait DatabaseProvider {
-  def databaseProvider: DatabaseProvider.Service
-}
+import zio.{Has, UIO, ZLayer, ZManaged}
 
 object DatabaseProvider {
   trait Service {
-    def database: URManaged[Blocking, DatabaseContext]
+    def database: DatabaseContext
   }
 
-  class Simple(quillConfigKey: String) extends DatabaseProvider {
-    override def databaseProvider: Service = new Service {
-      override val database: URManaged[Blocking, DatabaseContext] =
-        ZManaged
-          .fromAutoCloseable(UIO(new DatabaseContext.Service(quillConfigKey) {}))
-          .map(new DatabaseContext.Live(_))
-    }
-  }
+  def simple(quillConfigKey: String): ZLayer.NoDeps[Nothing, DatabaseProvider] =
+    ZLayer.fromManaged(
+      ZManaged
+        .fromAutoCloseable(UIO(new DatabaseContext.Service(quillConfigKey)))
+        .map(ctx =>
+          new Service {
+            override def database: DatabaseContext = Has(ctx)
+        }))
 
-  class WithMigration(quillConfigKey: String) extends Simple(quillConfigKey) {
-    override val databaseProvider: Service = new Service {
-      override val database: URManaged[Blocking, DatabaseContext] =
-        WithMigration.super.databaseProvider.database.mapM { db =>
-          def migrate() =
-            Flyway
-              .configure()
-              .locations("classpath:migration")
-              .dataSource(db.databaseContext.dataSource)
-              .load()
-              .migrate()
-          zio.blocking.blocking(UIO(migrate())).map(_ => db)
-        }
-    }
+  def withMigration(quillConfigKey: String): ZLayer[Blocking, Nothing, DatabaseProvider] = {
+    val dbctx: ZLayer[Blocking with DatabaseProvider, Nothing, DatabaseProvider] =
+      ZLayer.fromServiceM[DatabaseProvider.Service, Blocking, Nothing, DatabaseProvider.Service] { db =>
+        def migrate() =
+          Flyway
+            .configure()
+            .locations("classpath:migration")
+            .dataSource(db.database.get.dataSource)
+            .load()
+            .migrate()
+
+        zio.blocking.blocking(UIO(migrate())).map(_ => db)
+      }
+
+    (ZLayer.requires[Blocking] ++ simple(quillConfigKey)) >>> dbctx
   }
 }

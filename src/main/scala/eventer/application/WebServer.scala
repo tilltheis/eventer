@@ -81,7 +81,7 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
         def successResponse(sessionUser: SessionUser): RIO[R with Clock, Response[IO]] =
           for {
             clock <- ZIO.environment[Clock]
-            now <- clock.clock.currentDateTime
+            now <- clock.get.currentDateTime
             expiresAt = now.plusDays(30)
             expiresInSeconds = expiresAt.toEpochSecond - now.toEpochSecond
             jwtHeaderPayloadSignature <- sessionService.encodedJwtHeaderPayloadSignature(sessionUser.asJson.noSpaces,

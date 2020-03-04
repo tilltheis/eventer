@@ -5,44 +5,29 @@ import java.util.UUID
 import com.typesafe.scalalogging.LazyLogging
 import eventer.application.WebServer
 import eventer.domain.BlowfishCryptoHashing.BlowfishHash
-import eventer.domain.{BlowfishCryptoHashing, EventId, SessionServiceImpl, User, UserId}
+import eventer.domain._
 import eventer.infrastructure._
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{RManaged, UIO, URManaged, ZIO, ZManaged}
+import zio.{UIO, ZIO, ZLayer}
 
 final case class ServerConfig(port: Int, jwtSigningKeyBase64: String, csrfSigningKeyBase64: String)
 final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
 final case class Config(server: ServerConfig, db: DbConfig)
 
 object Main extends zio.App with LazyLogging {
-  type MainEnvironment = Clock with Blocking with DatabaseProvider with ConfigProvider
-  lazy val mainEnvironment: MainEnvironment = new Clock.Live with Blocking.Live with DatabaseProvider
-  with ConfigProvider.Live {
-    override def databaseProvider: DatabaseProvider.Service = new DatabaseProvider.Service {
-      override def database: URManaged[Blocking, DatabaseContext] =
-        for {
-          config <- ZManaged.fromEffect(configProvider.config)
-          databaseContext <- new DatabaseProvider.WithMigration(config.db.quillConfigKey).databaseProvider.database
-        } yield databaseContext
-    }
+  type MainEnvironment = Clock with Blocking
+  type ApplicationEnvironment = Clock with Blocking with DatabaseContext
+
+  def applicationLayer(config: Config): ZLayer[MainEnvironment, Nothing, ApplicationEnvironment] = {
+    val db = DatabaseProvider.withMigration(config.db.quillConfigKey)
+    val ctx = ZLayer.fromFunctionMany[DatabaseProvider, DatabaseContext](_.get.database)
+    (db >>> ctx) ++ ZLayer.requires[Blocking] ++ ZLayer.requires[Clock]
   }
 
-  type ApplicationEnvironment = Clock with Blocking with DatabaseContext with ConfigProvider
-  val applicationEnvironment: RManaged[MainEnvironment, ApplicationEnvironment] = for {
-    mainEnv <- ZManaged.environment[MainEnvironment]
-    dbContext <- mainEnv.databaseProvider.database
-  } yield
-    new Clock with Blocking with DatabaseContext with ConfigProvider {
-      override val clock: Clock.Service[Any] = mainEnv.clock
-      override val blocking: Blocking.Service[Any] = mainEnv.blocking
-      override def databaseContext: DatabaseContext.Service = dbContext.databaseContext
-      override def configProvider: ConfigProvider.Service = mainEnv.configProvider
-    }
-
-  val program: ZIO[MainEnvironment, Throwable, Unit] = {
-    applicationEnvironment.use { appEnv =>
-      appEnv.configProvider.config.flatMap { config =>
+  def application(config: Config): ZIO[ApplicationEnvironment, Throwable, Unit] = {
+    (ZIO
+      .accessM[ApplicationEnvironment] { appEnv =>
         val userRepository = new DbUserRepository[BlowfishHash](_.hash, BlowfishHash.unsafeFromHashString)
         val eventRepository = new DbEventRepository()
         val cryptoHashing = new BlowfishCryptoHashing()
@@ -71,13 +56,16 @@ object Main extends zio.App with LazyLogging {
                                     csrfKey)
           serving <- webServer.serve(config.server.port).provide(appEnv)
         } yield serving
-      }
-    }
+      })
+      .unit
   }
 
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] =
-    program
-      .provide(mainEnvironment)
-      .mapError(logger.error("Something went wrong!", _))
-      .fold(_ => 1, _ => 0)
+    for {
+      config <- ConfigProvider.Live.configProvider.config
+      result <- application(config)
+        .provideLayer(applicationLayer(config))
+        .mapError(logger.error("Something went wrong!", _))
+        .fold(_ => 1, _ => 0)
+    } yield result
 }

@@ -3,9 +3,12 @@ package eventer
 import java.time.{Instant, ZoneId, ZonedDateTime}
 
 import eventer.domain.{Event, EventId, UserId}
-import zio.ZIO
+import zio.{Has, ZIO}
 
 package object infrastructure {
+  type DatabaseProvider = Has[DatabaseProvider.Service]
+  type DatabaseContext = Has[DatabaseContext.Service]
+
   final case class DbEvent(id: EventId,
                            title: String,
                            description: String,
@@ -35,7 +38,7 @@ package object infrastructure {
   // This saves some boilerplate together with the code to access the `DatabaseContext`.
   private[infrastructure] def withCtx[R <: DatabaseContext, E, A](
       f: DatabaseContext.Service => ZIO[R, E, A]): ZIO[R, E, A] =
-    ZIO.accessM(x => f(x.databaseContext))
+    ZIO.accessM(x => f(x.get))
 
   object PostgresSqlState {
     val UniqueViolation = "23505"
