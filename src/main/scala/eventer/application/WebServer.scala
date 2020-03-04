@@ -155,7 +155,7 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
         .withHttpApp(routes.mapF(_.absorb))
         .withServiceErrorHandler(request => {
           case throwable =>
-            logger.error(s"Error handling request ${request.method} ${request.uri}", throwable)
+            logger.error(s"Error handling request ${request.method.toString} ${request.uri.toString}", throwable)
             UIO.succeed(Response(Status.InternalServerError))
         })
         .serve

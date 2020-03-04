@@ -29,3 +29,6 @@ testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 javaOptions += "-Duser.timezone=UTC"
 
 fork := true
+
+wartremoverErrors in (Compile, compile) := Warts.unsafe.diff(Seq(Wart.Any))
+wartremoverErrors in (Test, compile) := Warts.unsafe.diff(Seq(Wart.Any, Wart.DefaultArguments))

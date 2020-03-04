@@ -15,6 +15,7 @@ object BlowfishCryptoHashing {
   object BlowfishHash {
     private def apply(hash: String): BlowfishHash = new BlowfishHash(hash)
 
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     def unsafeFromHashString(hash: String): BlowfishHash =
       if (hash.matches("""\$2a\$\d\d\$.{53}""")) BlowfishHash(hash)
       else throw new IllegalArgumentException(s"Hash '$hash' is not a valid Blowfish hash.")
