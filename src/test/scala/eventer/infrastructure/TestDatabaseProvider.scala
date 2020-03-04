@@ -1,27 +1,27 @@
 package eventer.infrastructure
 
-import eventer.infrastructure.DatabaseProvider.{Service, Simple}
 import org.flywaydb.core.Flyway
 import zio.blocking.Blocking
-import zio.{UIO, URManaged}
+import zio.{UIO, ZLayer}
 
 object TestDatabaseProvider {
-  class WithDroppedSchemaAndMigration(quillConfigKey: String) extends Simple(quillConfigKey) {
-    override def databaseProvider: Service = new Service {
-      override def database: URManaged[Blocking, DatabaseContext] =
-        WithDroppedSchemaAndMigration.super.databaseProvider.database.mapM { db =>
-          def migrate() = {
-            val flyway = Flyway
-              .configure()
-              .locations("classpath:migration")
-              .dataSource(db.databaseContext.dataSource)
-              .load()
+  def withDroppedSchemaAndMigration(quillConfigKey: String): ZLayer[Blocking, Nothing, DatabaseProvider] = {
+    val dbctx: ZLayer[Blocking with DatabaseProvider, Nothing, DatabaseProvider] =
+      ZLayer.fromServiceM[DatabaseProvider.Service, Blocking, Nothing, DatabaseProvider.Service] { db =>
+        def migrate() = {
+          val flyway = Flyway
+            .configure()
+            .locations("classpath:migration")
+            .dataSource(db.database.get.dataSource)
+            .load()
 
-            flyway.clean()
-            flyway.migrate()
-          }
-          zio.blocking.blocking(UIO(migrate())).map(_ => db)
+          flyway.clean()
+          flyway.migrate()
         }
-    }
+
+        zio.blocking.blocking(UIO(migrate())).map(_ => db)
+      }
+
+    (ZLayer.requires[Blocking] ++ DatabaseProvider.simple(quillConfigKey)) >>> dbctx
   }
 }

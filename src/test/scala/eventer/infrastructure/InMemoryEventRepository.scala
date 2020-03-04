@@ -2,14 +2,14 @@ package eventer.infrastructure
 
 import eventer.domain.{Event, EventId, EventRepository}
 import eventer.infrastructure.InMemoryEventRepository.State
-import zio.{Ref, UIO, URIO, ZIO}
+import zio.{Has, Ref, UIO, URIO}
 
-class InMemoryEventRepository extends EventRepository[State] {
-  override def create(event: Event): URIO[State, Unit] =
-    URIO.accessM[State](_.eventRepositoryStateRef.update(_.appended(event))).unit
-  override def findAll: URIO[State, Seq[Event]] = URIO.accessM(_.eventRepositoryStateRef.get)
-  override def findById(id: EventId): URIO[State, Option[Event]] =
-    URIO.accessM[State](_.eventRepositoryStateRef.get).map(_.find(_.id == id))
+class InMemoryEventRepository extends EventRepository[Has[State]] {
+  override def create(event: Event): URIO[Has[State], Unit] =
+    URIO.accessM[Has[State]](_.get.eventRepositoryStateRef.update(_.appended(event))).unit
+  override def findAll: URIO[Has[State], Seq[Event]] = URIO.accessM(_.get.eventRepositoryStateRef.get)
+  override def findById(id: EventId): URIO[Has[State], Option[Event]] =
+    URIO.accessM[Has[State]](_.get.eventRepositoryStateRef.get).map(_.find(_.id == id))
 }
 
 object InMemoryEventRepository {

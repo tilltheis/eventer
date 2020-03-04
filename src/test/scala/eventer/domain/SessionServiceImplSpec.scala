@@ -7,6 +7,7 @@ import eventer.TestEnvSpec
 import eventer.domain.SessionService.InvalidCredentials
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, parser}
+import zio.Has
 import zio.duration.Duration
 import zio.test.Assertion._
 import zio.test._
@@ -18,7 +19,7 @@ object SessionServiceImplSpec {
   private val keyString = "I57lQ6u3M2SgWzjuqj+tyviRaSpBGsLxcJhprwVEonI="
   private val key = eventer.util.unsafeSecretKeyFromBase64(keyString, SessionServiceImpl.JwtSigningAlgorithm)
   private val sessionService = new SessionServiceImpl(userRepository, cryptoHashing, key)
-  private val loginStateM = InMemoryUserRepository.makeState(Set(TestData.user))
+  private val loginStateM = InMemoryUserRepository.makeState(Set(TestData.user)).map(Has(_))
 
   private val now = Duration(13, TimeUnit.SECONDS)
   private val expiresAt = Instant.ofEpochSecond(17)

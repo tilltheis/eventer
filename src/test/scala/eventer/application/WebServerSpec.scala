@@ -29,6 +29,12 @@ object WebServerSpec {
     val cryptoHashing = new PlaintextCryptoHashing
     private val keyString = "DXfXgmx9lLTh+25+VfxOMo+uiRdTm47yHNoVu41/jZFWYeXQY+J6ZRwWByrH59SaKQ5PNiXEv25xakqqm9xwAg=="
     val csrfKey = eventer.util.unsafeSecretKeyFromBase64(keyString, WebServer.CsrfSigningAlgorithm)
+
+    type R = Clock
+      with Has[InMemoryEventRepository.State]
+      with Has[InMemorySessionService.State]
+      with Has[InMemoryUserRepository.State]
+
     val webServer = new WebServer(eventRepository,
                                   sessionService,
                                   userRepository,
@@ -37,10 +43,6 @@ object WebServerSpec {
                                   UIO.succeed(TestData.userId),
                                   csrfKey)
 
-    type R = Clock
-      with InMemoryEventRepository.State
-      with InMemorySessionService.State
-      with InMemoryUserRepository.State
     type IO[A] = webServer.IO[A]
 
     val codecs = new Codecs[IO]
@@ -58,24 +60,20 @@ object WebServerSpec {
         _.addCookie("jwt-header.payload", s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}")
           .addCookie("jwt-signature", "signature"))
 
-    def makeState(
-        eventRepositoryStateM: UIO[InMemoryEventRepository.State] = InMemoryEventRepository.emptyState,
-        sessionServiceStateM: UIO[InMemorySessionService.State] = InMemorySessionService.emptyState,
-        userRepositoryStateM: UIO[InMemoryUserRepository.State] = InMemoryUserRepository.emptyState): URIO[Clock, R] =
-      for {
-        eventState <- eventRepositoryStateM
-        sessionServiceState <- sessionServiceStateM
-        userServiceState <- userRepositoryStateM
-        envClock <- ZIO.environment[Clock]
-      } yield
-        new Clock with InMemoryEventRepository.State with InMemorySessionService.State
-        with InMemoryUserRepository.State {
-          override val clock: Clock.Service[Any] = envClock.clock
-          override def eventRepositoryStateRef: Ref[Seq[Event]] = eventState.eventRepositoryStateRef
-          override def sessionServiceStateRef: Ref[Map[LoginRequest, SessionUser]] =
-            sessionServiceState.sessionServiceStateRef
-          override def userRepositoryStateRef: Ref[Set[User[String]]] = userServiceState.userRepositoryStateRef
-        }
+    def makeState(eventRepositoryStateM: UIO[InMemoryEventRepository.State] = InMemoryEventRepository.emptyState,
+                  sessionServiceStateM: UIO[InMemorySessionService.State] = InMemorySessionService.emptyState,
+                  userRepositoryStateM: UIO[InMemoryUserRepository.State] = InMemoryUserRepository.emptyState)
+      : ZLayer.NoDeps[Nothing,
+                      Has[InMemoryEventRepository.State] with Has[InMemorySessionService.State] with Has[
+                        InMemoryUserRepository.State]] =
+      ZLayer.fromEffect(eventRepositoryStateM) ++ ZLayer.fromEffect(sessionServiceStateM) ++ ZLayer.fromEffect(
+        userRepositoryStateM)
+
+    def makeEnv(
+        state: ZLayer.NoDeps[Nothing,
+                             Has[InMemoryEventRepository.State] with Has[InMemorySessionService.State] with Has[
+                               InMemoryUserRepository.State]]): ZIO[Clock, Nothing, R] =
+      ZIO.environment[R].provideLayer(ZLayer.requires[Clock] ++ state)
 
     def parseResponseBody[A](response: Response[IO])(implicit F: MonadError[IO, Throwable],
                                                      decoder: EntityDecoder[IO, A]): IO[Option[Either[Throwable, A]]] =
@@ -95,9 +93,9 @@ object WebServerSpec {
       val events = Seq(TestData.event, TestData.event)
       val responseM = webServer.routes.run(Request(Method.GET, uri"/events"))
       for {
-        state <- makeState(eventRepositoryStateM = InMemoryEventRepository.makeState(events))
-        response <- responseM.provide(state)
-        body <- parseResponseBody[Seq[Event]](response).provide(state)
+        env <- makeEnv(makeState(eventRepositoryStateM = InMemoryEventRepository.makeState(events)))
+        response <- responseM.provide(env)
+        body <- parseResponseBody[Seq[Event]](response).provide(env)
       } yield
         assert(response.status, equalTo(Status.Ok)) &&
           assert(body, isSome(isRight(equalTo(events))))
@@ -116,10 +114,10 @@ object WebServerSpec {
                                        csrfKey)
 
         for {
-          state <- makeState()
+          env <- makeEnv(makeState())
           request <- CsrfRequestM(Method.GET, uri"/events")
-          response <- webServer.routes.run(request).provide(state)
-          response2 <- webServer2.routes.run(request).provide(state)
+          response <- webServer.routes.run(request).provide(env)
+          response2 <- webServer2.routes.run(request).provide(env)
         } yield assert(response.status, equalTo(Status.Ok)) && assert(response2.status, equalTo(Status.Ok))
       }
     ),
@@ -130,11 +128,11 @@ object WebServerSpec {
         import codecs._
 
         for {
-          state <- makeState()
+          env <- makeEnv(makeState())
           request <- AuthedRequestM(Method.POST, uri"/events").map(_.withEntity(TestData.eventCreationRequest))
-          response <- webServer.routes.run(request).provide(state)
-          body <- parseResponseBody[Unit](response).provide(state)
-          finalState <- state.eventRepositoryStateRef.get
+          response <- webServer.routes.run(request).provide(env)
+          body <- parseResponseBody[Unit](response).provide(env)
+          finalState <- env.get[InMemoryEventRepository.State].eventRepositoryStateRef.get
         } yield
           assert(response.status, equalTo(Status.Created)) &&
             assert(body, isNone) &&
@@ -147,8 +145,8 @@ object WebServerSpec {
 
         val responseM = webServer.routes.run(Request(Method.POST, uri"/events").withEntity(TestData.event))
         for {
-          state <- makeState()
-          response <- responseM.provide(state)
+          env <- makeEnv(makeState())
+          response <- responseM.provide(env)
         } yield assert(response.status, equalTo(Status.Forbidden))
       }
     ),
@@ -159,11 +157,11 @@ object WebServerSpec {
         import codecs._
 
         for {
-          state <- makeState()
+          env <- makeEnv(makeState())
           request <- CsrfRequestM(Method.POST, uri"/users").map(_.withEntity(TestData.registrationRequest))
-          response <- webServer.routes.run(request).provide(state)
-          body <- parseResponseBody[Unit](response).provide(state)
-          finalUserRepoState <- state.userRepositoryStateRef.get
+          response <- webServer.routes.run(request).provide(env)
+          body <- parseResponseBody[Unit](response).provide(env)
+          finalUserRepoState <- env.get[InMemoryUserRepository.State].userRepositoryStateRef.get
         } yield
           assert(response.status, equalTo(Status.Created)) &&
             assert(body, isNone) &&
@@ -175,10 +173,10 @@ object WebServerSpec {
         import codecs._
 
         for {
-          state <- makeState(userRepositoryStateM = InMemoryUserRepository.makeState(Set(TestData.user)))
+          env <- makeEnv(makeState(userRepositoryStateM = InMemoryUserRepository.makeState(Set(TestData.user))))
           request <- CsrfRequestM(Method.POST, uri"/users").map(_.withEntity(TestData.registrationRequest))
-          response <- webServer.routes.run(request).provide(state)
-          finalUserRepoState <- state.userRepositoryStateRef.get
+          response <- webServer.routes.run(request).provide(env)
+          finalUserRepoState <- env.get[InMemoryUserRepository.State].userRepositoryStateRef.get
         } yield
           assert(response.status, equalTo(Status.Created)) &&
             assert(finalUserRepoState, equalTo(Set(TestData.user)))
@@ -193,11 +191,12 @@ object WebServerSpec {
         for {
           // just not start at 0 to avoid bugs when converting between epoch seconds and second durations
           _ <- TestClock.adjust(Duration.apply(123, TimeUnit.DAYS))
-          state <- makeState(
-            sessionServiceStateM = InMemorySessionService.makeState(Map(TestData.loginRequest -> TestData.sessionUser)))
+          env <- makeEnv(
+            makeState(sessionServiceStateM =
+              InMemorySessionService.makeState(Map(TestData.loginRequest -> TestData.sessionUser))))
           request <- CsrfRequestM(Method.POST, uri"/sessions").map(_.withEntity(TestData.loginRequest))
-          response <- webServer.routes.run(request).provide(state)
-          body <- parseResponseBody[Unit](response).provide(state)
+          response <- webServer.routes.run(request).provide(env)
+          body <- parseResponseBody[Unit](response).provide(env)
           thirtyDaysInSeconds = 60 * 60 * 24 * 30
         } yield {
           def makeCookie(name: String, content: String, httpOnly: Boolean) =
@@ -221,12 +220,12 @@ object WebServerSpec {
         import codecs._
 
         for {
-          state <- makeState(
-            sessionServiceStateM = InMemorySessionService.makeState(Map(TestData.loginRequest -> TestData.sessionUser))
-          )
+          env <- makeEnv(
+            makeState(sessionServiceStateM =
+              InMemorySessionService.makeState(Map(TestData.loginRequest -> TestData.sessionUser))))
           request <- CsrfRequestM(Method.POST, uri"/sessions").map(_.withEntity(TestData.loginRequest))
-          response1 <- webServer.routes.run(request).provide(state)
-          response2 <- webServer.routes.run(request).provide(state)
+          response1 <- webServer.routes.run(request).provide(env)
+          response2 <- webServer.routes.run(request).provide(env)
           csrfToken1 <- UIO(response1.cookies.find(_.name == WebServer.CsrfTokenCookieName).map(_.content))
           csrfToken2 <- UIO(response2.cookies.find(_.name == WebServer.CsrfTokenCookieName).map(_.content))
         } yield
@@ -239,10 +238,10 @@ object WebServerSpec {
         import codecs._
 
         for {
-          state <- makeState()
+          env <- makeEnv(makeState())
           request <- CsrfRequestM(Method.POST, uri"/sessions").map(_.withEntity(TestData.loginRequest))
-          response <- webServer.routes.run(request).provide(state)
-          body <- parseResponseBody[Unit](response).provide(state)
+          response <- webServer.routes.run(request).provide(env)
+          body <- parseResponseBody[Unit](response).provide(env)
         } yield
           assert(response.status, equalTo(Status.Forbidden)) &&
             assert(body, isNone)
@@ -258,10 +257,11 @@ object WebServerSpec {
         val responseM = webServer.routes.run(Request(Method.POST, uri"/sessions").withEntity(TestData.loginRequest))
 
         for {
-          state <- makeState(
-            sessionServiceStateM = InMemorySessionService.makeState(Map(TestData.loginRequest -> TestData.sessionUser)))
-          response <- responseM.provide(state)
-          body <- parseResponseBody[Unit](response).provide(state)
+          env <- makeEnv(
+            makeState(sessionServiceStateM =
+              InMemorySessionService.makeState(Map(TestData.loginRequest -> TestData.sessionUser))))
+          response <- responseM.provide(env)
+          body <- parseResponseBody[Unit](response).provide(env)
         } yield
           assert(response.status, equalTo(Status.Forbidden)) &&
             assert(body, isNone)
@@ -274,10 +274,10 @@ object WebServerSpec {
         import codecs._
 
         for {
-          state <- makeState()
+          env <- makeEnv(makeState())
           request <- AuthedRequestM(Method.DELETE, uri"/sessions")
-          response <- webServer.routes.run(request).provide(state)
-          body <- parseResponseBody[Unit](response).provide(state)
+          response <- webServer.routes.run(request).provide(env)
+          body <- parseResponseBody[Unit](response).provide(env)
         } yield {
           def makeCookie(name: String, httpOnly: Boolean) =
             ResponseCookie(name,
@@ -297,10 +297,10 @@ object WebServerSpec {
         import codecs._
 
         for {
-          state <- makeState()
+          env <- makeEnv(makeState())
           request <- CsrfRequestM(Method.DELETE, uri"/sessions")
-          response <- webServer.routes.run(request).provide(state)
-          body <- parseResponseBody[Unit](response).provide(state)
+          response <- webServer.routes.run(request).provide(env)
+          body <- parseResponseBody[Unit](response).provide(env)
         } yield assert(response.status, equalTo(Status.Forbidden)) && assert(body, isNone)
       }
     ),
@@ -310,9 +310,9 @@ object WebServerSpec {
 
       checkAllM(Gen.fromIterable(Method.all)) { method =>
         for {
-          state <- makeState()
+          env <- makeEnv(makeState())
           responseM = webServer.routes.run(Request(method, uri"/unknown"))
-          response <- responseM.provide(state)
+          response <- responseM.provide(env)
         } yield assert(response.status, equalTo(Status.Forbidden))
       }
     })

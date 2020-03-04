@@ -7,9 +7,9 @@ import eventer.domain.SessionService.{InvalidCredentials, InvalidJwtFormat}
 import zio.clock.Clock
 import zio._
 
-class InMemorySessionService extends SessionService[State] {
-  override def login(loginRequest: LoginRequest): ZIO[State, InvalidCredentials.type, SessionUser] =
-    RIO.accessM[State](_.sessionServiceStateRef.get).map(_.get(loginRequest)).someOrFail(InvalidCredentials)
+class InMemorySessionService extends SessionService[Has[State]] {
+  override def login(loginRequest: LoginRequest): ZIO[Has[State], InvalidCredentials.type, SessionUser] =
+    RIO.accessM[Has[State]](_.get.sessionServiceStateRef.get).map(_.get(loginRequest)).someOrFail(InvalidCredentials)
 
   override def encodedJwtHeaderPayloadSignature(content: String,
                                                 expiresAt: Instant): URIO[Clock, (String, String, String)] =

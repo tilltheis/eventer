@@ -10,7 +10,7 @@ object BlowfishCryptoHashingSpec {
       suite("verify")(
         testM("returns true for the original hash input") {
           val blowfish = new BlowfishCryptoHashing
-          checkSomeM(10)(Gen.anyString) { x =>
+          checkNM(10)(Gen.anyString) { x =>
             for {
               hashed <- blowfish.hash(x)
               verified <- blowfish.verify(x, hashed)
