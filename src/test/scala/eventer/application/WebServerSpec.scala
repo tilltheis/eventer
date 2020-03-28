@@ -97,8 +97,8 @@ object WebServerSpec {
         response <- responseM.provide(env)
         body <- parseResponseBody[Seq[Event]](response).provide(env)
       } yield
-        assert(response.status, equalTo(Status.Ok)) &&
-          assert(body, isSome(isRight(equalTo(events))))
+        assert(response.status)(equalTo(Status.Ok)) &&
+          assert(body)(isSome(isRight(equalTo(events))))
     }),
     suite("csrf")(
       testM("tokens are valid across WebServer instances") {
@@ -118,7 +118,7 @@ object WebServerSpec {
           request <- CsrfRequestM(Method.GET, uri"/events")
           response <- webServer.routes.run(request).provide(env)
           response2 <- webServer2.routes.run(request).provide(env)
-        } yield assert(response.status, equalTo(Status.Ok)) && assert(response2.status, equalTo(Status.Ok))
+        } yield assert(response.status)(equalTo(Status.Ok)) && assert(response2.status)(equalTo(Status.Ok))
       }
     ),
     suite("POST /events")(
@@ -134,9 +134,9 @@ object WebServerSpec {
           body <- parseResponseBody[Unit](response).provide(env)
           finalState <- env.get[InMemoryEventRepository.State].eventRepositoryStateRef.get
         } yield
-          assert(response.status, equalTo(Status.Created)) &&
-            assert(body, isNone) &&
-            assert(finalState, equalTo(Seq(TestData.event)))
+          assert(response.status)(equalTo(Status.Created)) &&
+            assert(body)(isNone) &&
+            assert(finalState)(equalTo(Seq(TestData.event)))
       },
       testM("rejects requests that are not authenticated") {
         val fixture = new Fixture
@@ -147,7 +147,7 @@ object WebServerSpec {
         for {
           env <- makeEnv(makeState())
           response <- responseM.provide(env)
-        } yield assert(response.status, equalTo(Status.Forbidden))
+        } yield assert(response.status)(equalTo(Status.Forbidden))
       }
     ),
     suite("POST /users")(
@@ -163,9 +163,9 @@ object WebServerSpec {
           body <- parseResponseBody[Unit](response).provide(env)
           finalUserRepoState <- env.get[InMemoryUserRepository.State].userRepositoryStateRef.get
         } yield
-          assert(response.status, equalTo(Status.Created)) &&
-            assert(body, isNone) &&
-            assert(finalUserRepoState, equalTo(Set(TestData.user)))
+          assert(response.status)(equalTo(Status.Created)) &&
+            assert(body)(isNone) &&
+            assert(finalUserRepoState)(equalTo(Set(TestData.user)))
       },
       testM("returns created even if a user with the same email address already exists") {
         val fixture = new Fixture
@@ -178,8 +178,8 @@ object WebServerSpec {
           response <- webServer.routes.run(request).provide(env)
           finalUserRepoState <- env.get[InMemoryUserRepository.State].userRepositoryStateRef.get
         } yield
-          assert(response.status, equalTo(Status.Created)) &&
-            assert(finalUserRepoState, equalTo(Set(TestData.user)))
+          assert(response.status)(equalTo(Status.Created)) &&
+            assert(finalUserRepoState)(equalTo(Set(TestData.user)))
       }
     ),
     suite("POST /session")(
@@ -201,14 +201,14 @@ object WebServerSpec {
         } yield {
           def makeCookie(name: String, content: String, httpOnly: Boolean) =
             ResponseCookie(name, content, maxAge = Some(thirtyDaysInSeconds), secure = true, httpOnly = httpOnly)
-          assert(response.status, equalTo(Status.Created)) &&
-          assert(response.cookies, contains(makeCookie("jwt-signature", "signature", httpOnly = true))) &&
-          assert(response.cookies,
-                 contains(
-                   makeCookie("jwt-header.payload",
-                              s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}",
-                              httpOnly = false))) &&
-          assert(body, isNone)
+          assert(response.status)(equalTo(Status.Created)) &&
+          assert(response.cookies)(contains(makeCookie("jwt-signature", "signature", httpOnly = true))) &&
+          assert(response.cookies)(
+            contains(
+              makeCookie("jwt-header.payload",
+                         s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}",
+                         httpOnly = false))) &&
+          assert(body)(isNone)
         }
       },
       testM("generates a random csrf token") {
@@ -229,8 +229,8 @@ object WebServerSpec {
           csrfToken1 <- UIO(response1.cookies.find(_.name == WebServer.CsrfTokenCookieName).map(_.content))
           csrfToken2 <- UIO(response2.cookies.find(_.name == WebServer.CsrfTokenCookieName).map(_.content))
         } yield
-          assert(csrfToken1, not(isNone)) && assert(csrfToken2, not(isNone)) &&
-            assert(csrfToken1, not(equalTo(csrfToken2)))
+          assert(csrfToken1)(not(isNone)) && assert(csrfToken2)(not(isNone)) &&
+            assert(csrfToken1)(not(equalTo(csrfToken2)))
       },
       testM("rejects the request if the credentials are incorrect") {
         val fixture = new Fixture
@@ -243,8 +243,8 @@ object WebServerSpec {
           response <- webServer.routes.run(request).provide(env)
           body <- parseResponseBody[Unit](response).provide(env)
         } yield
-          assert(response.status, equalTo(Status.Forbidden)) &&
-            assert(body, isNone)
+          assert(response.status)(equalTo(Status.Forbidden)) &&
+            assert(body)(isNone)
       },
       testM("rejects the request if the csrf token is missing") {
         // This should be tested for every route but since our middleware takes care of that and i don't want to bloat
@@ -263,8 +263,8 @@ object WebServerSpec {
           response <- responseM.provide(env)
           body <- parseResponseBody[Unit](response).provide(env)
         } yield
-          assert(response.status, equalTo(Status.Forbidden)) &&
-            assert(body, isNone)
+          assert(response.status)(equalTo(Status.Forbidden)) &&
+            assert(body)(isNone)
       }
     ),
     suite("DELETE /session")(
@@ -286,9 +286,9 @@ object WebServerSpec {
                            maxAge = Some(0),
                            secure = true,
                            httpOnly = httpOnly)
-          assert(response.cookies, contains(makeCookie("jwt-header.payload", httpOnly = false))) &&
-          assert(response.cookies, contains(makeCookie("jwt-signature", httpOnly = true))) &&
-          assert(body, isNone)
+          assert(response.cookies)(contains(makeCookie("jwt-header.payload", httpOnly = false))) &&
+          assert(response.cookies)(contains(makeCookie("jwt-signature", httpOnly = true))) &&
+          assert(body)(isNone)
         }
       },
       testM("rejects the request when not logged in") {
@@ -301,7 +301,7 @@ object WebServerSpec {
           request <- CsrfRequestM(Method.DELETE, uri"/sessions")
           response <- webServer.routes.run(request).provide(env)
           body <- parseResponseBody[Unit](response).provide(env)
-        } yield assert(response.status, equalTo(Status.Forbidden)) && assert(body, isNone)
+        } yield assert(response.status)(equalTo(Status.Forbidden)) && assert(body)(isNone)
       }
     ),
     suite("XXX /unknown")(testM(s"returns 403 Forbidden") {
@@ -313,7 +313,7 @@ object WebServerSpec {
           env <- makeEnv(makeState())
           responseM = webServer.routes.run(Request(method, uri"/unknown"))
           response <- responseM.provide(env)
-        } yield assert(response.status, equalTo(Status.Forbidden))
+        } yield assert(response.status)(equalTo(Status.Forbidden))
       }
     })
   )

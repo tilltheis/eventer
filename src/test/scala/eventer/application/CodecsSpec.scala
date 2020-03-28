@@ -26,10 +26,10 @@ object CodecsSpec {
   val spec: TestEnvSpec = suite("Codecs") {
     suite("Event")(
       suite("encode")(test("works") {
-        assert(TestData.event.asJson, equalTo(json))
+        assert(TestData.event.asJson)(equalTo(json))
       }),
       suite("decode")(test("works") {
-        assert(json.as[Event], isRight(equalTo(TestData.event)))
+        assert(json.as[Event])(isRight(equalTo(TestData.event)))
       })
     )
   }

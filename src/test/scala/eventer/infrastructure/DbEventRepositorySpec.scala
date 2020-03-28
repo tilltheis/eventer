@@ -19,7 +19,7 @@ object DbEventRepositorySpec {
           _ <- userRepository.create(TestData.user)
           _ <- eventRepository.create(TestData.event)
           foundEvent <- eventRepository.findAll
-        } yield assert(foundEvent, equalTo(Seq(TestData.event)))
+        } yield assert(foundEvent)(equalTo(Seq(TestData.event)))
       }
     ),
     suite("findAll")(
@@ -29,10 +29,10 @@ object DbEventRepositorySpec {
           _ <- eventRepository.create(TestData.event)
           _ <- eventRepository.create(TestData.event.copy(id = otherId))
           foundEvents <- eventRepository.findAll
-        } yield assert(foundEvents, equalTo(Seq(TestData.event, TestData.event.copy(id = otherId))))
+        } yield assert(foundEvents)(equalTo(Seq(TestData.event, TestData.event.copy(id = otherId))))
       },
       dbTestM("returns nothing if the DB is empty") {
-        assertM(eventRepository.findAll, isEmpty)
+        assertM(eventRepository.findAll)(isEmpty)
       }
     ),
     suite("findById")(
@@ -41,19 +41,19 @@ object DbEventRepositorySpec {
           _ <- userRepository.create(TestData.user)
           _ <- eventRepository.create(TestData.event)
           foundEvent <- eventRepository.findById(TestData.event.id)
-        } yield assert(foundEvent, isSome(equalTo(TestData.event)))
+        } yield assert(foundEvent)(isSome(equalTo(TestData.event)))
       },
       dbTestM("returns nothing if the DB is empty") {
         for {
           foundEvent <- eventRepository.findById(TestData.event.id)
-        } yield assert(foundEvent, isNone)
+        } yield assert(foundEvent)(isNone)
       },
       dbTestM("returns nothing if no event with the given id exists") {
         for {
           _ <- userRepository.create(TestData.user)
           _ <- eventRepository.create(TestData.event)
           foundEvent <- eventRepository.findById(otherId)
-        } yield assert(foundEvent, isNone)
+        } yield assert(foundEvent)(isNone)
       },
     )
   )

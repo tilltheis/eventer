@@ -4,8 +4,8 @@ version := "0.1"
 
 scalaVersion := "2.13.1"
 
-libraryDependencies += "dev.zio" %% "zio" % "1.0.0-RC18-1"
-libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC10"
+libraryDependencies += "dev.zio" %% "zio" % "1.0.0-RC18-2"
+libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC12"
 libraryDependencies += "org.http4s" %% "http4s-dsl" % "0.21.0-RC5"
 libraryDependencies += "org.http4s" %% "http4s-circe" % "0.21.0-RC5"
 libraryDependencies += "org.http4s" %% "http4s-blaze-server" % "0.21.0-RC5"
@@ -21,8 +21,8 @@ libraryDependencies += "org.flywaydb" % "flyway-core" % "6.1.4"
 libraryDependencies += "org.mindrot" % "jbcrypt" % "0.4"
 libraryDependencies += "com.pauldijou" %% "jwt-core" % "4.2.0"
 
-libraryDependencies += "dev.zio" %% "zio-test" % "1.0.0-RC18-1" % "test"
-libraryDependencies += "dev.zio" %% "zio-test-sbt" % "1.0.0-RC18-1" % "test"
+libraryDependencies += "dev.zio" %% "zio-test" % "1.0.0-RC18-2" % "test"
+libraryDependencies += "dev.zio" %% "zio-test-sbt" % "1.0.0-RC18-2" % "test"
 
 testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 

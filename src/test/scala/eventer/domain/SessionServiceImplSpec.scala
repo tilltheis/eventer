@@ -7,7 +7,8 @@ import eventer.TestEnvSpec
 import eventer.domain.SessionService.InvalidCredentials
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, parser}
-import zio.Has
+import zio.clock.Clock
+import zio.{Has, ZIO}
 import zio.duration.Duration
 import zio.test.Assertion._
 import zio.test._
@@ -28,16 +29,18 @@ object SessionServiceImplSpec {
     suite("login")(
       testM("succeeds for correct credentials") {
         for {
-          maybeSessionUser <- sessionService.login(TestData.loginRequest).provideM(loginStateM)
-        } yield assert(maybeSessionUser, equalTo(TestData.sessionUser))
+          loginState <- loginStateM
+          maybeSessionUser <- sessionService.login(TestData.loginRequest).provide(loginState)
+        } yield assert(maybeSessionUser)(equalTo(TestData.sessionUser))
       },
       testM("fails for incorrect credentials") {
         checkAllM(
           Gen.fromIterable(Seq(TestData.loginRequest.copy(email = "wrong-email"),
                                TestData.loginRequest.copy(password = "wrong-password")))) { loginRequest =>
           for {
-            maybeSessionUser <- sessionService.login(loginRequest).provideM(loginStateM).flip
-          } yield assert(maybeSessionUser, equalTo(InvalidCredentials))
+            loginState <- loginStateM
+            maybeSessionUser <- sessionService.login(loginRequest).provide(loginState).flip
+          } yield assert(maybeSessionUser)(equalTo(InvalidCredentials))
         }
       }
     ),
@@ -50,9 +53,9 @@ object SessionServiceImplSpec {
           jsonHeader <- eventer.base64Decode(jwtHeader).map(parser.parse).rightOrFail(new RuntimeException)
           jsonPayload <- eventer.base64Decode(jwtPayload).map(parser.parse).rightOrFail(new RuntimeException)
         } yield
-          assert(jsonHeader, equalTo(Json.obj("alg" -> "HS256".asJson, "typ" -> "JWT".asJson))) &&
-            assert(jsonPayload,
-                   equalTo(Json.obj("iat" -> 13.asJson, "exp" -> 17.asJson, "content" -> "content".asJson)))
+          assert(jsonHeader)(equalTo(Json.obj("alg" -> "HS256".asJson, "typ" -> "JWT".asJson))) &&
+            assert(jsonPayload)(
+              equalTo(Json.obj("iat" -> 13.asJson, "exp" -> 17.asJson, "content" -> "content".asJson)))
       },
       testM("creates a signature that is only valid for the original payload") {
         for {
@@ -60,7 +63,7 @@ object SessionServiceImplSpec {
           (_, _, jwtSignature) = jwt
           otherJwt <- sessionService.encodedJwtHeaderPayloadSignature("""{"content":"other content"}""", expiresAt)
           (_, _, otherJwtSignature) = otherJwt
-        } yield assert(jwtSignature, not(equalTo(otherJwtSignature)))
+        } yield assert(jwtSignature)(not(equalTo(otherJwtSignature)))
       }
     ),
     suite("decodedJwtHeaderPayloadSignature")(
@@ -72,7 +75,7 @@ object SessionServiceImplSpec {
           decodedJwtPayload <- sessionService
             .decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
             .option
-        } yield assert(decodedJwtPayload, isSome(equalTo(content)))
+        } yield assert(decodedJwtPayload)(isSome(equalTo(content)))
       },
       testM("fails if the signature doesn't match") {
         for {
@@ -83,17 +86,20 @@ object SessionServiceImplSpec {
           decodedJwtPayload <- sessionService
             .decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, otherJwtSignature)
             .option
-        } yield assert(decodedJwtPayload, isNone)
+        } yield assert(decodedJwtPayload)(isNone)
       },
       testM("fails if the jwt is expired") {
         for {
           _ <- TestClock.adjust(Duration.fromJava(java.time.Duration.ofMillis(expiresAt.toEpochMilli)))
+          clock: Clock <- ZIO.access[Clock](identity)
+          seconds <- clock.get.currentTime(TimeUnit.SECONDS)
+          _ = println(s"current seconds = ${seconds.toString}")
           jwt <- sessionService.encodedJwtHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
           (jwtHeader, jwtPayload, jwtSignature) = jwt
           decodedJwtPayload <- sessionService
             .decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
             .option
-        } yield assert(decodedJwtPayload, isNone)
+        } yield assert(decodedJwtPayload)(isNone)
       }
     )
   )

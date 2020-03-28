@@ -14,7 +14,7 @@ object BlowfishCryptoHashingSpec {
             for {
               hashed <- blowfish.hash(x)
               verified <- blowfish.verify(x, hashed)
-            } yield assert(verified, isTrue)
+            } yield assert(verified)(isTrue)
           }
         },
         testM("returns false for anything that is not the original hash input") {
@@ -22,19 +22,19 @@ object BlowfishCryptoHashingSpec {
           for {
             hashed <- blowfish.hash("foo")
             verified <- blowfish.verify("bar", hashed)
-          } yield assert(verified, isFalse)
+          } yield assert(verified)(isFalse)
         }
       ),
       suite("BlowfishHash.unsafeFromHashString")(
         test("succeeds for valid hashes") {
           assert(
             BlowfishCryptoHashing.BlowfishHash.unsafeFromHashString(
-              "$2a$10$d.vQEHwPIqtSYWQOMtg7LuZgTOx1R/2sOLnqCUkpixkXJ1paUhEIm"),
+              "$2a$10$d.vQEHwPIqtSYWQOMtg7LuZgTOx1R/2sOLnqCUkpixkXJ1paUhEIm"))(
             not(throwsA[RuntimeException])
           )
         },
         test("fails for invalid hashes") {
-          assert(BlowfishCryptoHashing.BlowfishHash.unsafeFromHashString("foo"), throwsA[RuntimeException])
+          assert(BlowfishCryptoHashing.BlowfishHash.unsafeFromHashString("foo"))(throwsA[RuntimeException])
         }
       )
     )
