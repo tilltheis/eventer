@@ -5,6 +5,12 @@ Create events, invite friends and party hard!
 This is a playground to get to know [ZIO](https://zio.dev/) and [React](https://reactjs.org/).
 
 
+## Trying it Out
+
+You can log in with email `example@example.org` and password `password`.
+This account will be created automatically at application startup.
+
+
 ## Prerequisites
 
 `docker`, `docker-compose`, `sbt` `npm` must be installed.

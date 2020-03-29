@@ -7,9 +7,11 @@ import eventer.application.WebServer
 import eventer.domain.BlowfishCryptoHashing.BlowfishHash
 import eventer.domain._
 import eventer.infrastructure._
+import pureconfig.ConfigSource
+import pureconfig.generic.auto._
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{UIO, ZIO, ZLayer}
+import zio.{UIO, URLayer, ZIO, ZLayer}
 
 final case class ServerConfig(port: Int, jwtSigningKeyBase64: String, csrfSigningKeyBase64: String)
 final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
@@ -19,7 +21,7 @@ object Main extends zio.App with LazyLogging {
   type MainEnvironment = Clock with Blocking
   type ApplicationEnvironment = Clock with Blocking with DatabaseContext
 
-  def applicationLayer(config: Config): ZLayer[MainEnvironment, Nothing, ApplicationEnvironment] = {
+  def applicationLayer(config: Config): URLayer[MainEnvironment, ApplicationEnvironment] = {
     val db = DatabaseProvider.withMigration(config.db.quillConfigKey)
     val ctx = ZLayer.fromFunctionMany[DatabaseProvider, DatabaseContext](_.get.database)
     (db >>> ctx) ++ ZLayer.requires[Blocking] ++ ZLayer.requires[Clock]
@@ -43,7 +45,7 @@ object Main extends zio.App with LazyLogging {
             ))
             .option
             .absorb
-            .catchAll(_ => ZIO.unit) // catch duplicate insert exceptions
+            .ignore // catch duplicate insert exceptions
             .provide(appEnv)
           jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, SessionServiceImpl.JwtSigningAlgorithm)
           csrfKey <- util.secretKeyFromBase64(config.server.csrfSigningKeyBase64, WebServer.CsrfSigningAlgorithm)
@@ -63,7 +65,7 @@ object Main extends zio.App with LazyLogging {
 
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] =
     for {
-      config <- ConfigProvider.Live.configProvider.config
+      config <- UIO(ConfigSource.default.at("eventer").loadOrThrow[Config])
       result <- application(config)
         .provideLayer(applicationLayer(config))
         .mapError(logger.error("Something went wrong!", _))
