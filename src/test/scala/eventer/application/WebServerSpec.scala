@@ -6,8 +6,7 @@ import cats.MonadError
 import cats.instances.option._
 import cats.syntax.traverse._
 import eventer.TestEnvSpec
-import eventer.domain._
-import eventer.infrastructure.InMemoryEventRepository
+import eventer.domain.{InMemoryEventRepository, _}
 import io.circe.syntax.EncoderOps
 import org.http4s._
 import org.http4s.implicits._
@@ -61,9 +60,9 @@ object WebServerSpec {
           .addCookie("jwt-signature", "signature"))
 
     def makeState(
-        eventRepositoryStateM: UIO[InMemoryEventRepository.State] = InMemoryEventRepository.emptyState,
-        sessionServiceStateM: UIO[InMemorySessionService.State] = InMemorySessionService.emptyState,
-        userRepositoryStateM: UIO[InMemoryUserRepository.State] = InMemoryUserRepository.emptyState): URIO[Clock, R] =
+        eventRepositoryStateM: UIO[InMemoryEventRepository.State] = InMemoryEventRepository.State.empty,
+        sessionServiceStateM: UIO[InMemorySessionService.State] = InMemorySessionService.State.empty,
+        userRepositoryStateM: UIO[InMemoryUserRepository.State] = InMemoryUserRepository.State.empty): URIO[Clock, R] =
       ZIO
         .environment[R]
         .provideLayer(
@@ -90,7 +89,7 @@ object WebServerSpec {
       val events = Seq(TestData.event, TestData.event)
       val responseM = webServer.routes.run(Request(Method.GET, uri"/events"))
       for {
-        state <- makeState(eventRepositoryStateM = InMemoryEventRepository.makeState(events))
+        state <- makeState(eventRepositoryStateM = InMemoryEventRepository.State.make(events))
         response <- responseM.provide(state)
         body <- parseResponseBody[Seq[Event]](response).provide(state)
       } yield
@@ -170,7 +169,7 @@ object WebServerSpec {
         import codecs._
 
         for {
-          state <- makeState(userRepositoryStateM = InMemoryUserRepository.makeState(Set(TestData.user)))
+          state <- makeState(userRepositoryStateM = InMemoryUserRepository.State.make(Set(TestData.user)))
           request <- CsrfRequestM(Method.POST, uri"/users").map(_.withEntity(TestData.registrationRequest))
           response <- webServer.routes.run(request).provide(state)
           finalUserRepoState <- state.get[InMemoryUserRepository.State].stateRef.get
@@ -190,8 +189,8 @@ object WebServerSpec {
           // just not start at 0 to avoid bugs when converting between epoch seconds and second durations
           _ <- TestClock.adjust(duration)
           _ <- zio.clock.sleep(duration)
-          state <- makeState(
-            sessionServiceStateM = InMemorySessionService.makeState(Map(TestData.loginRequest -> TestData.sessionUser)))
+          state <- makeState(sessionServiceStateM =
+            InMemorySessionService.State.make(Map(TestData.loginRequest -> TestData.sessionUser)))
           request <- CsrfRequestM(Method.POST, uri"/sessions").map(_.withEntity(TestData.loginRequest))
           response <- webServer.routes.run(request).provide(state)
           body <- parseResponseBody[Unit](response).provide(state)
@@ -218,8 +217,8 @@ object WebServerSpec {
         import codecs._
 
         for {
-          state <- makeState(
-            sessionServiceStateM = InMemorySessionService.makeState(Map(TestData.loginRequest -> TestData.sessionUser)))
+          state <- makeState(sessionServiceStateM =
+            InMemorySessionService.State.make(Map(TestData.loginRequest -> TestData.sessionUser)))
           request <- CsrfRequestM(Method.POST, uri"/sessions").map(_.withEntity(TestData.loginRequest))
           response1 <- webServer.routes.run(request).provide(state)
           response2 <- webServer.routes.run(request).provide(state)
@@ -254,8 +253,8 @@ object WebServerSpec {
         val responseM = webServer.routes.run(Request(Method.POST, uri"/sessions").withEntity(TestData.loginRequest))
 
         for {
-          state <- makeState(
-            sessionServiceStateM = InMemorySessionService.makeState(Map(TestData.loginRequest -> TestData.sessionUser)))
+          state <- makeState(sessionServiceStateM =
+            InMemorySessionService.State.make(Map(TestData.loginRequest -> TestData.sessionUser)))
           response <- responseM.provide(state)
           body <- parseResponseBody[Unit](response).provide(state)
         } yield

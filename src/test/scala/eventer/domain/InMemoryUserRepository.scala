@@ -2,7 +2,7 @@ package eventer.domain
 
 import eventer.domain.InMemoryUserRepository.State
 import eventer.domain.UserRepository.EmailAlreadyInUse
-import zio.{Has, RIO, Ref, UIO, URIO, ZIO}
+import zio._
 
 class InMemoryUserRepository extends UserRepository[Has[State], String] {
   override def create(user: User[String]): ZIO[Has[State], EmailAlreadyInUse.type, Unit] =
@@ -13,15 +13,6 @@ class InMemoryUserRepository extends UserRepository[Has[State], String] {
 }
 
 object InMemoryUserRepository {
-  trait State {
-    def stateRef: Ref[Set[User[String]]]
-  }
-
-  def makeState(state: Set[User[String]]): UIO[State] = Ref.make(state).map { x =>
-    new State {
-      override val stateRef: Ref[Set[User[String]]] = x
-    }
-  }
-
-  def emptyState: UIO[State] = makeState(Set.empty)
+  final case class State(stateRef: Ref[Set[User[String]]])
+  object State extends InMemorySetStateCompanion(new State(_))
 }

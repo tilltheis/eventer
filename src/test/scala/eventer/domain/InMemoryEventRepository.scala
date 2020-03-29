@@ -1,8 +1,7 @@
-package eventer.infrastructure
+package eventer.domain
 
-import eventer.domain.{Event, EventId, EventRepository}
-import eventer.infrastructure.InMemoryEventRepository.State
-import zio.{Has, Ref, UIO, URIO}
+import eventer.domain.InMemoryEventRepository.State
+import zio.{Has, Ref, URIO}
 
 class InMemoryEventRepository extends EventRepository[Has[State]] {
   override def create(event: Event): URIO[Has[State], Unit] =
@@ -13,15 +12,6 @@ class InMemoryEventRepository extends EventRepository[Has[State]] {
 }
 
 object InMemoryEventRepository {
-  trait State {
-    def stateRef: Ref[Seq[Event]]
-  }
-
-  def makeState(state: Seq[Event]): UIO[State] = Ref.make(state).map { x =>
-    new State {
-      override val stateRef: Ref[Seq[Event]] = x
-    }
-  }
-
-  def emptyState: UIO[State] = makeState(Seq.empty)
+  final case class State(stateRef: Ref[Seq[Event]])
+  object State extends InMemorySeqStateCompanion(new State(_))
 }

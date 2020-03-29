@@ -7,7 +7,7 @@ import eventer.TestEnvSpec
 import eventer.domain.SessionService.InvalidCredentials
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, parser}
-import zio.Has
+import zio.ZLayer
 import zio.duration.Duration
 import zio.test.Assertion._
 import zio.test._
@@ -19,7 +19,7 @@ object SessionServiceImplSpec {
   private val keyString = "I57lQ6u3M2SgWzjuqj+tyviRaSpBGsLxcJhprwVEonI="
   private val key = eventer.util.unsafeSecretKeyFromBase64(keyString, SessionServiceImpl.JwtSigningAlgorithm)
   private val sessionService = new SessionServiceImpl(userRepository, cryptoHashing, key)
-  private val loginStateM = InMemoryUserRepository.makeState(Set(TestData.user)).map(Has(_))
+  private val loginStateLayer = ZLayer.fromEffect(InMemoryUserRepository.State.make(Set(TestData.user)))
 
   private val now = Duration(13, TimeUnit.SECONDS)
   private val expiresAt = Instant.ofEpochSecond(17)
@@ -28,8 +28,7 @@ object SessionServiceImplSpec {
     suite("login")(
       testM("succeeds for correct credentials") {
         for {
-          loginState <- loginStateM
-          maybeSessionUser <- sessionService.login(TestData.loginRequest).provide(loginState)
+          maybeSessionUser <- sessionService.login(TestData.loginRequest).provideLayer(loginStateLayer)
         } yield assert(maybeSessionUser)(equalTo(TestData.sessionUser))
       },
       testM("fails for incorrect credentials") {
@@ -37,8 +36,7 @@ object SessionServiceImplSpec {
           Gen.fromIterable(Seq(TestData.loginRequest.copy(email = "wrong-email"),
                                TestData.loginRequest.copy(password = "wrong-password")))) { loginRequest =>
           for {
-            loginState <- loginStateM
-            maybeSessionUser <- sessionService.login(loginRequest).provide(loginState).flip
+            maybeSessionUser <- sessionService.login(loginRequest).provideLayer(loginStateLayer).flip
           } yield assert(maybeSessionUser)(equalTo(InvalidCredentials))
         }
       }

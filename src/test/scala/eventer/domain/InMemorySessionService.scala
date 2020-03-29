@@ -22,15 +22,6 @@ class InMemorySessionService extends SessionService[Has[State]] {
 }
 
 object InMemorySessionService {
-  trait State {
-    def stateRef: Ref[Map[LoginRequest, SessionUser]]
-  }
-
-  def makeState(state: Map[LoginRequest, SessionUser]): UIO[State] = Ref.make(state).map { x =>
-    new State {
-      override val stateRef: Ref[Map[LoginRequest, SessionUser]] = x
-    }
-  }
-
-  def emptyState: UIO[State] = makeState(Map.empty)
+  final case class State(stateRef: Ref[Map[LoginRequest, SessionUser]])
+  object State extends InMemoryMapStateCompanion(new State(_))
 }
