@@ -7,8 +7,7 @@ import eventer.TestEnvSpec
 import eventer.domain.SessionService.InvalidCredentials
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, parser}
-import zio.clock.Clock
-import zio.{Has, ZIO}
+import zio.Has
 import zio.duration.Duration
 import zio.test.Assertion._
 import zio.test._
@@ -48,6 +47,7 @@ object SessionServiceImplSpec {
       testM("creates the correct jwt header and payload") {
         for {
           _ <- TestClock.adjust(now)
+          _ <- zio.clock.sleep(now)
           jwt <- sessionService.encodedJwtHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
           (jwtHeader, jwtPayload, _) = jwt
           jsonHeader <- eventer.base64Decode(jwtHeader).map(parser.parse).rightOrFail(new RuntimeException)
@@ -89,11 +89,10 @@ object SessionServiceImplSpec {
         } yield assert(decodedJwtPayload)(isNone)
       },
       testM("fails if the jwt is expired") {
+        val duration = Duration.fromJava(java.time.Duration.ofMillis(expiresAt.toEpochMilli))
         for {
-          _ <- TestClock.adjust(Duration.fromJava(java.time.Duration.ofMillis(expiresAt.toEpochMilli)))
-          clock: Clock <- ZIO.access[Clock](identity)
-          seconds <- clock.get.currentTime(TimeUnit.SECONDS)
-          _ = println(s"current seconds = ${seconds.toString}")
+          _ <- TestClock.adjust(duration)
+          _ <- zio.clock.sleep(duration)
           jwt <- sessionService.encodedJwtHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
           (jwtHeader, jwtPayload, jwtSignature) = jwt
           decodedJwtPayload <- sessionService

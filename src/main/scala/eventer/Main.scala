@@ -33,6 +33,7 @@ object Main extends zio.App with LazyLogging {
         val cryptoHashing = new BlowfishCryptoHashing()
 
         for {
+          // example user with email "example@example.org" and password "password"
           _ <- userRepository
             .create(User(
               UserId(UUID.fromString("6f31ccde-4321-4cc9-9056-6c3cbd550cba")),
