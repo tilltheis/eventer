@@ -2,10 +2,11 @@ package eventer
 
 import java.util.UUID
 
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.StrictLogging
 import eventer.application.WebServer
 import eventer.domain.BlowfishCryptoHashing.BlowfishHash
 import eventer.domain._
+import eventer.infrastructure.EmailSenderImpl.PasswordAuthentication
 import eventer.infrastructure._
 import pureconfig.ConfigSource
 import pureconfig.generic.auto._
@@ -15,9 +16,10 @@ import zio.{UIO, URLayer, ZIO, ZLayer}
 
 final case class ServerConfig(port: Int, jwtSigningKeyBase64: String, csrfSigningKeyBase64: String)
 final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
-final case class Config(server: ServerConfig, db: DbConfig)
+final case class EmailConfig(sender: String, host: String, port: Int, username: String, password: String)
+final case class Config(publicUrl: String, server: ServerConfig, db: DbConfig, email: EmailConfig)
 
-object Main extends zio.App with LazyLogging {
+object Main extends zio.App with StrictLogging {
   type MainEnvironment = Clock with Blocking
   type ApplicationEnvironment = Clock with Blocking with DatabaseContext
 
@@ -32,6 +34,9 @@ object Main extends zio.App with LazyLogging {
       .accessM[ApplicationEnvironment] { appEnv =>
         val userRepository = new DbUserRepository[BlowfishHash](_.hash, BlowfishHash.unsafeFromHashString)
         val eventRepository = new DbEventRepository()
+        val emailSender = new EmailSenderImpl(config.email.host,
+                                              config.email.port,
+                                              PasswordAuthentication(config.email.username, config.email.password))
         val cryptoHashing = new BlowfishCryptoHashing()
 
         for {
@@ -53,6 +58,7 @@ object Main extends zio.App with LazyLogging {
           webServer = new WebServer(eventRepository,
                                     sessionService,
                                     userRepository,
+                                    emailSender,
                                     cryptoHashing,
                                     UIO(EventId(UUID.randomUUID())),
                                     UIO(UserId(UUID.randomUUID())),

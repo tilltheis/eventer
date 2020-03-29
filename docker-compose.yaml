@@ -22,3 +22,12 @@ services:
       PGTZ: UTC
     ports:
       - "5432:5432"
+
+  email-server:
+    image: catatnight/postfix
+    restart: always
+    environment:
+      maildomain: mail.eventer.local
+      smtp_user: eventer:eventer
+    ports:
+      - "25:25"

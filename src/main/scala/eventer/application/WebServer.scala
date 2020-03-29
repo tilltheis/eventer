@@ -33,6 +33,7 @@ object WebServer {
 class WebServer[R, HashT](eventRepository: EventRepository[R],
                           sessionService: SessionService[R],
                           userRepository: UserRepository[R, HashT],
+                          emailSender: EmailSender[R],
                           cryptoHashing: CryptoHashing[HashT],
                           generateEventId: UIO[EventId],
                           generateUserId: UIO[UserId],
@@ -102,13 +103,29 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
         } yield response
 
       case request @ POST -> Root / "users" =>
-        for {
+        // todo: read email message and smtp settings from config
+        // todo: also create services instead of doing all logic inside of this webserver
+        val result = for {
           registrationRequest <- request.as[RegistrationRequest]
           id <- generateUserId
           passwordHash <- cryptoHashing.hash(registrationRequest.password)
-          _ <- userRepository.create(registrationRequest.toUser(id, passwordHash)).option
-          response <- Created() // always pretend to have created an account to not leak data
+          user = registrationRequest.toUser(id, passwordHash)
+          _ <- userRepository.create(user)
+          _ <- emailSender.sendEmail(
+            Email(
+              sender = "eventer@eventer.local",
+              recipient = user.email,
+              subject = "Welcome to Eventer",
+              body =
+                s"Welcome, ${user.name}!\nPlease finish your registration by clicking this link: https://localhost:3000/confirm-account"
+            ))
+          response <- Created()
         } yield response
+
+        val result2 = result.tapBoth(x => UIO(logger.warn(s"could not register user (${x.toString})")),
+                                     _ => UIO(logger.info("registration finished")))
+
+        result2.catchAll(_ => Created())
     }
 
     val authedRoutes = AuthedRoutes.of[SessionUser, IO] {

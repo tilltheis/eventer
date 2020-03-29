@@ -27,4 +27,6 @@ package object domain {
     def toEvent(id: EventId, hostId: UserId): Event =
       Event(id = id, title = title, description = description, hostId = hostId, dateTime = dateTime)
   }
+
+  final case class Email(sender: String, recipient: String, subject: String, body: String)
 }

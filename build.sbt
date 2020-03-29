@@ -20,9 +20,11 @@ libraryDependencies += "org.postgresql" % "postgresql" % "42.2.9"
 libraryDependencies += "org.flywaydb" % "flyway-core" % "6.1.4"
 libraryDependencies += "org.mindrot" % "jbcrypt" % "0.4"
 libraryDependencies += "com.pauldijou" %% "jwt-core" % "4.2.0"
+libraryDependencies += "com.github.daddykotex" %% "courier" % "2.0.0"
 
-libraryDependencies += "dev.zio" %% "zio-test" % "1.0.0-RC18-2" % "test"
-libraryDependencies += "dev.zio" %% "zio-test-sbt" % "1.0.0-RC18-2" % "test"
+libraryDependencies += "dev.zio" %% "zio-test" % "1.0.0-RC18-2" % Test
+libraryDependencies += "dev.zio" %% "zio-test-sbt" % "1.0.0-RC18-2" % Test
+libraryDependencies += "com.icegreen" % "greenmail" % "1.5.11" % Test
 
 testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 

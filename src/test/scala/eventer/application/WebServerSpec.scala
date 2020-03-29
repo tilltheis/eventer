@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 import cats.MonadError
 import cats.instances.option._
 import cats.syntax.traverse._
-import eventer.TestEnvSpec
+import eventer.{TestEnvSpec, domain}
 import eventer.domain.{InMemoryEventRepository, _}
 import io.circe.syntax.EncoderOps
 import org.http4s._
@@ -25,6 +25,7 @@ object WebServerSpec {
     val eventRepository = new InMemoryEventRepository
     val sessionService = new InMemorySessionService
     val userRepository = new InMemoryUserRepository
+    val emailSender = new InMemoryEmailSender
     val cryptoHashing = new PlaintextCryptoHashing
     private val keyString = "DXfXgmx9lLTh+25+VfxOMo+uiRdTm47yHNoVu41/jZFWYeXQY+J6ZRwWByrH59SaKQ5PNiXEv25xakqqm9xwAg=="
     val csrfKey = eventer.util.unsafeSecretKeyFromBase64(keyString, WebServer.CsrfSigningAlgorithm)
@@ -33,10 +34,12 @@ object WebServerSpec {
       with Has[InMemoryEventRepository.State]
       with Has[InMemorySessionService.State]
       with Has[InMemoryUserRepository.State]
+      with Has[InMemoryEmailSender.State]
 
     val webServer = new WebServer(eventRepository,
                                   sessionService,
                                   userRepository,
+                                  emailSender,
                                   cryptoHashing,
                                   UIO.succeed(TestData.eventId),
                                   UIO.succeed(TestData.userId),
@@ -59,17 +62,18 @@ object WebServerSpec {
         _.addCookie("jwt-header.payload", s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}")
           .addCookie("jwt-signature", "signature"))
 
-    def makeState(
-        eventRepositoryStateM: UIO[InMemoryEventRepository.State] = InMemoryEventRepository.State.empty,
-        sessionServiceStateM: UIO[InMemorySessionService.State] = InMemorySessionService.State.empty,
-        userRepositoryStateM: UIO[InMemoryUserRepository.State] = InMemoryUserRepository.State.empty): URIO[Clock, R] =
+    def makeState(eventRepositoryStateM: UIO[InMemoryEventRepository.State] = InMemoryEventRepository.State.empty,
+                  sessionServiceStateM: UIO[InMemorySessionService.State] = InMemorySessionService.State.empty,
+                  userRepositoryStateM: UIO[InMemoryUserRepository.State] = InMemoryUserRepository.State.empty,
+                  emailSenderStateM: UIO[InMemoryEmailSender.State] = InMemoryEmailSender.State.empty): URIO[Clock, R] =
       ZIO
         .environment[R]
         .provideLayer(
           ZLayer.requires[Clock] ++
             ZLayer.fromEffect(eventRepositoryStateM) ++
             ZLayer.fromEffect(sessionServiceStateM) ++
-            ZLayer.fromEffect(userRepositoryStateM))
+            ZLayer.fromEffect(userRepositoryStateM) ++
+            ZLayer.fromEffect(emailSenderStateM))
 
     def parseResponseBody[A](response: Response[IO])(implicit F: MonadError[IO, Throwable],
                                                      decoder: EntityDecoder[IO, A]): IO[Option[Either[Throwable, A]]] =
@@ -104,6 +108,7 @@ object WebServerSpec {
         val webServer2 = new WebServer(eventRepository,
                                        sessionService,
                                        userRepository,
+                                       emailSender,
                                        cryptoHashing,
                                        UIO.succeed(TestData.eventId),
                                        UIO.succeed(TestData.userId),
@@ -158,10 +163,16 @@ object WebServerSpec {
           response <- webServer.routes.run(request).provide(state)
           body <- parseResponseBody[Unit](response).provide(state)
           finalUserRepoState <- state.get[InMemoryUserRepository.State].stateRef.get
+          finalEmailSenderState <- state.get[InMemoryEmailSender.State].stateRef.get
         } yield
           assert(response.status)(equalTo(Status.Created)) &&
             assert(body)(isNone) &&
-            assert(finalUserRepoState)(equalTo(Set(TestData.user)))
+            assert(finalUserRepoState)(equalTo(Set(TestData.user))) &&
+            assert(finalEmailSenderState)(hasSize(equalTo(1))) &&
+            assert(finalEmailSenderState)(hasFirst(hasField("sender", _.sender, equalTo("eventer@eventer.local")))) &&
+            assert(finalEmailSenderState)(hasFirst(hasField("recipient", _.recipient, equalTo(TestData.user.email)))) &&
+            assert(finalEmailSenderState)(
+              hasFirst(hasField("body", _.body, containsString("https://localhost:3000/confirm-account"))))
       },
       testM("returns created even if a user with the same email address already exists") {
         val fixture = new Fixture
