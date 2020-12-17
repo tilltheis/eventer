@@ -1,15 +1,16 @@
 version: '3.1'
 
 services:
-  # The development HTTP server is running on localhost:9000.
-  # But we want HTTPS and that's running on localhost:9001 and reverse proxying traffic to :9000.
-  proxy:
-    image: nginx:1.17-alpine
-    # network_mode: host # this might be needed when docker is not run via Docker Desktop
-    ports:
-      - "9001:443"
-    volumes:
-      - ./nginx:/etc/nginx/conf.d/
+  # https disabled for local dev because WSL2 + Docker is causing problems
+  # # The development HTTP server is running on localhost:9000.
+  # # But we want HTTPS and that's running on localhost:9001 and reverse proxying traffic to :9000.
+  # proxy:
+  #   image: nginx:1.17-alpine
+  #   # network_mode: host # this might be needed when docker is not run via Docker Desktop
+  #   ports:
+  #     - "9001:443"
+  #   volumes:
+  #     - ./nginx:/etc/nginx/conf.d/
 
   database:
     image: postgres:12.1

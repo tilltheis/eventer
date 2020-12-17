@@ -36,14 +36,17 @@ object WebServerSpec {
       with Has[InMemoryUserRepository.State]
       with Has[InMemoryEmailSender.State]
 
-    val webServer = new WebServer(eventRepository,
-                                  sessionService,
-                                  userRepository,
-                                  emailSender,
-                                  cryptoHashing,
-                                  UIO.succeed(TestData.eventId),
-                                  UIO.succeed(TestData.userId),
-                                  csrfKey)
+    val webServer = new WebServer(
+      eventRepository,
+      sessionService,
+      userRepository,
+      emailSender,
+      cryptoHashing,
+      UIO.succeed(TestData.eventId),
+      UIO.succeed(TestData.userId),
+      csrfKey,
+      useSecureCookies = true
+    )
 
     type IO[A] = webServer.IO[A]
 
@@ -105,14 +108,17 @@ object WebServerSpec {
         val fixture = new Fixture
         import fixture._
 
-        val webServer2 = new WebServer(eventRepository,
-                                       sessionService,
-                                       userRepository,
-                                       emailSender,
-                                       cryptoHashing,
-                                       UIO.succeed(TestData.eventId),
-                                       UIO.succeed(TestData.userId),
-                                       csrfKey)
+        val webServer2 = new WebServer(
+          eventRepository,
+          sessionService,
+          userRepository,
+          emailSender,
+          cryptoHashing,
+          UIO.succeed(TestData.eventId),
+          UIO.succeed(TestData.userId),
+          csrfKey,
+          useSecureCookies = true
+        )
 
         for {
           state <- makeState()

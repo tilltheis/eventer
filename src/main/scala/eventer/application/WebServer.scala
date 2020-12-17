@@ -37,7 +37,8 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
                           cryptoHashing: CryptoHashing[HashT],
                           generateEventId: UIO[EventId],
                           generateUserId: UIO[UserId],
-                          csrfKey: SecretKey)
+                          csrfKey: SecretKey,
+                          useSecureCookies: Boolean)
     extends StrictLogging {
   type IO[A] = RIO[R with Clock, A]
   type OptionTIO = { type T[A] = OptionT[IO, A] }
@@ -50,7 +51,7 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
       .withHeaderName(CaseInsensitiveString(CsrfTokenHeaderName))
       .withCookiePath(None)
       .withCookieHttpOnly(false)
-      .withCookieSecure(true)
+      .withCookieSecure(useSecureCookies)
       .build
   }
 

@@ -11,9 +11,12 @@ import pureconfig.ConfigSource
 import pureconfig.generic.auto._
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{ExitCode, UIO, URIO, URLayer, ZIO, ZLayer}
+import zio.{UIO, URIO, URLayer, ZIO, ZLayer}
 
-final case class ServerConfig(port: Int, jwtSigningKeyBase64: String, csrfSigningKeyBase64: String)
+final case class ServerConfig(port: Int,
+                              jwtSigningKeyBase64: String,
+                              csrfSigningKeyBase64: String,
+                              useSecureCookies: Boolean)
 final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
 final case class EmailConfig(sender: String, host: String, port: Int, username: String, password: String)
 final case class Config(publicUrl: String, server: ServerConfig, db: DbConfig, email: EmailConfig)
@@ -54,14 +57,17 @@ object Main extends zio.App with StrictLogging {
           jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, SessionServiceImpl.JwtSigningAlgorithm)
           csrfKey <- util.secretKeyFromBase64(config.server.csrfSigningKeyBase64, WebServer.CsrfSigningAlgorithm)
           sessionService = new SessionServiceImpl(userRepository, cryptoHashing, jwtKey)
-          webServer = new WebServer(eventRepository,
-                                    sessionService,
-                                    userRepository,
-                                    emailSender,
-                                    cryptoHashing,
-                                    UIO(EventId(UUID.randomUUID())),
-                                    UIO(UserId(UUID.randomUUID())),
-                                    csrfKey)
+          webServer = new WebServer(
+            eventRepository,
+            sessionService,
+            userRepository,
+            emailSender,
+            cryptoHashing,
+            UIO(EventId(UUID.randomUUID())),
+            UIO(UserId(UUID.randomUUID())),
+            csrfKey,
+            config.server.useSecureCookies
+          )
           serving <- webServer.serve(config.server.port).provide(appEnv)
         } yield serving
       })
