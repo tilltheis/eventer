@@ -199,7 +199,6 @@ object WebServerSpec {
         for {
           // just not start at 0 to avoid bugs when converting between epoch seconds and second durations
           _ <- TestClock.adjust(duration)
-          _ <- zio.clock.sleep(duration)
           state <- makeState(sessionServiceStateM =
             InMemorySessionService.State.make(Map(TestData.loginRequest -> TestData.sessionUser)))
           request <- CsrfRequestM(Method.POST, uri"/sessions").map(_.withEntity(TestData.loginRequest))

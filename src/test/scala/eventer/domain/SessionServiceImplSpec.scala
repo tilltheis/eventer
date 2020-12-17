@@ -45,7 +45,6 @@ object SessionServiceImplSpec {
       testM("creates the correct jwt header and payload") {
         for {
           _ <- TestClock.adjust(now)
-          _ <- zio.clock.sleep(now)
           jwt <- sessionService.encodedJwtHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
           (jwtHeader, jwtPayload, _) = jwt
           jsonHeader <- eventer.base64Decode(jwtHeader).map(parser.parse).rightOrFail(new RuntimeException)
@@ -90,7 +89,6 @@ object SessionServiceImplSpec {
         val duration = Duration.fromJava(java.time.Duration.ofMillis(expiresAt.toEpochMilli))
         for {
           _ <- TestClock.adjust(duration)
-          _ <- zio.clock.sleep(duration)
           jwt <- sessionService.encodedJwtHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
           (jwtHeader, jwtPayload, jwtSignature) = jwt
           decodedJwtPayload <- sessionService

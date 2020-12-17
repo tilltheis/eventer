@@ -15,7 +15,7 @@ object TestDatabaseProvider {
             .dataSource(db.database.get.dataSource)
             .load()
 
-          flyway.clean()
+          val _ = flyway.clean()
           flyway.migrate()
         }
 

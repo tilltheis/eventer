@@ -1,8 +1,7 @@
 package eventer.infrastructure
 
 import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
-
-import io.getquill.{Escape, NamingStrategy, PostgresJdbcContext, SnakeCase}
+import io.getquill.{EntityQuery, Escape, NamingStrategy, PostgresJdbcContext, SnakeCase}
 import zio.RIO
 import zio.blocking.Blocking
 

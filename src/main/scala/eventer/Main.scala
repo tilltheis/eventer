@@ -1,7 +1,6 @@
 package eventer
 
 import java.util.UUID
-
 import com.typesafe.scalalogging.StrictLogging
 import eventer.application.WebServer
 import eventer.domain.BlowfishCryptoHashing.BlowfishHash
@@ -12,7 +11,7 @@ import pureconfig.ConfigSource
 import pureconfig.generic.auto._
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{UIO, URLayer, ZIO, ZLayer}
+import zio.{ExitCode, UIO, URIO, URLayer, ZIO, ZLayer}
 
 final case class ServerConfig(port: Int, jwtSigningKeyBase64: String, csrfSigningKeyBase64: String)
 final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
@@ -69,12 +68,12 @@ object Main extends zio.App with StrictLogging {
       .unit
   }
 
-  override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] =
+  override def run(args: List[String]): URIO[zio.ZEnv, zio.ExitCode] =
     for {
       config <- UIO(ConfigSource.default.at("eventer").loadOrThrow[Config])
       result <- application(config)
         .provideLayer(applicationLayer(config))
         .mapError(logger.error("Something went wrong!", _))
-        .fold(_ => 1, _ => 0)
+        .exitCode
     } yield result
 }

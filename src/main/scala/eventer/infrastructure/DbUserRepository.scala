@@ -2,7 +2,7 @@ package eventer.infrastructure
 
 import eventer.domain.UserRepository.EmailAlreadyInUse
 import eventer.domain.{User, UserRepository}
-import io.getquill.MappedEncoding
+import io.getquill.{EntityQuery, Insert, MappedEncoding}
 import org.postgresql.util.PSQLException
 import zio.blocking.Blocking
 import zio.{URIO, ZIO}
@@ -15,7 +15,7 @@ class DbUserRepository[HashT](encodePasswordHash: HashT => String, decodePasswor
   override def create(user: User[HashT]): ZIO[DatabaseContext with Blocking, EmailAlreadyInUse.type, Unit] = withCtx {
     ctx =>
       import ctx._
-      val q: ctx.Quoted[ctx.Insert[User[HashT]]] = quote(query[User[HashT]].insert(lift(user)))
+      val q: ctx.Quoted[Insert[User[HashT]]] = quote(query[User[HashT]].insert(lift(user)))
       performEffect_(runIO(q)).catchAll {
         case e: PSQLException if e.getSQLState == PostgresSqlState.UniqueViolation && e.getMessage.contains("email") =>
           ZIO.fail(EmailAlreadyInUse)
@@ -25,7 +25,7 @@ class DbUserRepository[HashT](encodePasswordHash: HashT => String, decodePasswor
 
   override def findByEmail(email: String): URIO[DatabaseContext with Blocking, Option[User[HashT]]] = withCtx { ctx =>
     import ctx._
-    val q: ctx.Quoted[ctx.EntityQuery[User[HashT]]] = quote(query[User[HashT]].filter(_.email == lift(email)))
+    val q: ctx.Quoted[EntityQuery[User[HashT]]] = quote(query[User[HashT]].filter(_.email == lift(email)))
     performEffect(runIO(q)).map(_.headOption).orDie
   }
 }
