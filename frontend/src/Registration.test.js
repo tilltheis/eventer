@@ -13,7 +13,7 @@ const correctUser = {
 test('shows nothing if user is already logged in', async () => {
   const userRepository = new InMemoryUserRepository();
   const { container } = render(<Registration userRepository={userRepository} loggedInUser={correctUser} />);
-  expect(container).toBeEmpty();
+  expect(container).toBeEmptyDOMElement();
 });
 
 test('sends data to the repository and renders the logout component on success', async () => {
