@@ -136,7 +136,12 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
     val authedRoutes = AuthedRoutes.of[SessionUser, IO] {
       case DELETE -> Root / "sessions" as _ =>
         def removeCookie(name: String, httpOnly: Boolean) =
-          ResponseCookie(name, "", expires = Some(HttpDate.Epoch), maxAge = Some(0), secure = true, httpOnly = httpOnly)
+          ResponseCookie(name,
+                         "",
+                         expires = Some(HttpDate.Epoch),
+                         maxAge = Some(0),
+                         secure = useSecureCookies,
+                         httpOnly = httpOnly)
         Ok().map(
           _.addCookie(removeCookie(JwtHeaderPayloadCookieName, httpOnly = false))
             .addCookie(removeCookie(JwtSignatureCookieName, httpOnly = true)))
