@@ -315,16 +315,17 @@ object WebServerSpec {
         } yield assert(response.status)(equalTo(Status.Forbidden)) && assert(body)(isNone)
       }
     ),
-    suite("XXX /unknown")(testM(s"returns 403 Forbidden") {
+    suite("XXX /unknown")(testM(s"returns 404 Not Found") {
       val fixture = new Fixture
       import fixture._
 
       checkAllM(Gen.fromIterable(Method.all)) { method =>
         for {
           state <- makeState()
-          responseM = webServer.routes.run(Request(method, uri"/unknown"))
+          request <- CsrfRequestM(method, uri"/unknown")
+          responseM = webServer.routes.run(request)
           response <- responseM.provide(state)
-        } yield assert(response.status)(equalTo(Status.Forbidden))
+        } yield assert(response.status)(equalTo(Status.NotFound))
       }
     })
   )

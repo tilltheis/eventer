@@ -13,7 +13,7 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.CSRF
 import org.http4s.server.middleware.CSRF.CSRFBuilder
-import org.http4s.server.{AuthMiddleware, Middleware}
+import org.http4s.server.{AuthMiddleware, Middleware, Router}
 import org.http4s.syntax.kleisli.http4sKleisliResponseSyntaxOptionT
 import org.http4s.util.CaseInsensitiveString
 import zio.clock.Clock
@@ -45,6 +45,12 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
   type IO[A] = RIO[R with Clock, A]
   type OptionTIO = { type T[A] = OptionT[IO, A] }
 
+  private val codecs = new Codecs[IO]
+  import codecs._
+
+  private val dsl = Http4sDsl[IO]
+  import dsl._
+
   private[application] val csrf: CSRF[OptionTIO#T, IO] = {
     // Double submit cookie is enough, no need to check Origin header on top of that.
     val csrfBuilder: CSRFBuilder[OptionTIO#T, IO] = CSRF(csrfKey, _ => true)
@@ -71,17 +77,24 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
     OptionT(sessionUserM.option)
   }
 
-  private[application] val routes: HttpApp[IO] = {
-    val codecs = new Codecs[IO]
-    import codecs._
+  // Per default Http4s returns `Unauthorized` which per spec requires a `WWW-Authenticate` header but Http4s doesn't
+  // supply it. That's against the spec and that's not cool. Also, that header doesn't make sense for our form based
+  // authentication and so the `Unauthorized` HTTP code is inappropriate. We use `Forbidden` instead.
+  private val authMiddleware
+    : Middleware[OptionTIO#T, AuthedRequest[IO, SessionUser], Response[IO], Request[IO], Response[IO]] =
+    AuthMiddleware.noSpider(authUser, _ => Forbidden())
 
-    val dsl = Http4sDsl[IO]
-    import dsl._
+  // Having CSRF is more like an additional safety net because we're only planning to have an SPA and that is
+  // practically safe against CSRF attacks. The CSRF attack vector only opens when we allow
+  // `application/x-www-form-urlencoded` instead of `application/json`.
+  // However, HTTP4S currently ignores the content type when decoding requests as JSON and I don't know how to change
+  // that. Until either problem is solved we actually have to have the CSRF token in order to be safe.
+  private val csrfMiddleware: Middleware[OptionTIO#T, Request[IO], Response[IO], Request[IO], Response[IO]] =
+    csrf.validate()
+
+  private val sessionRoutes: HttpRoutes[IO] = {
     val publicRoutes = HttpRoutes.of[IO] {
-      case GET -> Root / "events" =>
-        eventRepository.findAll.flatMap(events => Ok(events))
-
-      case request @ POST -> Root / "sessions" =>
+      case request @ POST -> Root =>
         def successResponse(sessionUser: SessionUser): RIO[R with Clock, Response[IO]] =
           for {
             now <- ZIO.accessM[Clock](_.get.currentDateTime)
@@ -108,8 +121,48 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
           sessionUserOption <- sessionService.login(loginRequest).option
           response <- sessionUserOption.fold(Forbidden())(successResponse)
         } yield response
+    }
 
-      case request @ POST -> Root / "users" =>
+    val privateRoutes = AuthedRoutes.of[SessionUser, IO] {
+      case DELETE -> Root as _ =>
+        def removeCookie(name: String, httpOnly: Boolean) =
+          ResponseCookie(name,
+                         "",
+                         expires = Some(HttpDate.Epoch),
+                         maxAge = Some(0),
+                         secure = useSecureCookies,
+                         httpOnly = httpOnly)
+        Ok().map(
+          _.addCookie(removeCookie(JwtHeaderPayloadCookieName, httpOnly = false))
+            .addCookie(removeCookie(JwtSignatureCookieName, httpOnly = true)))
+    }
+
+    publicRoutes <+> authMiddleware(privateRoutes)
+  }
+
+  private val eventRoutes: HttpRoutes[IO] = {
+    val publicRoutes = HttpRoutes.of[IO] {
+      case GET -> Root =>
+        eventRepository.findAll.flatMap(events => Ok(events))
+    }
+
+    val privateRoutes = AuthedRoutes.of[SessionUser, IO] {
+      case request @ POST -> Root as sessionUser =>
+        for {
+          eventCreationRequest <- request.req.as[EventCreationRequest]
+          id <- generateEventId
+          event = eventCreationRequest.toEvent(id, sessionUser.id)
+          _ <- eventRepository.create(event)
+          response <- Created()
+        } yield response
+    }
+
+    publicRoutes <+> authMiddleware(privateRoutes)
+  }
+
+  private val userRoutes: HttpRoutes[IO] = {
+    val publicRoutes = HttpRoutes.of[IO] {
+      case request @ POST -> Root =>
         // todo: read email message and smtp settings from config
         // todo: also create services instead of doing all logic inside of this webserver
         val result = for {
@@ -135,44 +188,13 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
         result2.catchAll(_ => Created())
     }
 
-    val authedRoutes = AuthedRoutes.of[SessionUser, IO] {
-      case DELETE -> Root / "sessions" as _ =>
-        def removeCookie(name: String, httpOnly: Boolean) =
-          ResponseCookie(name,
-                         "",
-                         expires = Some(HttpDate.Epoch),
-                         maxAge = Some(0),
-                         secure = useSecureCookies,
-                         httpOnly = httpOnly)
-        Ok().map(
-          _.addCookie(removeCookie(JwtHeaderPayloadCookieName, httpOnly = false))
-            .addCookie(removeCookie(JwtSignatureCookieName, httpOnly = true)))
+    publicRoutes
+  }
 
-      case request @ POST -> Root / "events" as sessionUser =>
-        for {
-          eventCreationRequest <- request.req.as[EventCreationRequest]
-          id <- generateEventId
-          event = eventCreationRequest.toEvent(id, sessionUser.id)
-          _ <- eventRepository.create(event)
-          response <- Created()
-        } yield response
-    }
-
-    // Per default Http4s returns `Unauthorized` which per spec requires a `WWW-Authenticate` header but Http4s doesn't
-    // supply it. That's against the spec and that's not cool. Also, that header doesn't make sense for our form based
-    // authentication and so the `Unauthorized` HTTP code is inappropriate. We use `Forbidden` instead.
-    val authMiddleware
-      : Middleware[OptionTIO#T, AuthedRequest[IO, SessionUser], Response[IO], Request[IO], Response[IO]] =
-      AuthMiddleware.noSpider(authUser, _ => Forbidden())
-
-    // Having CSRF is more like an additional safety net because we're only planning to have an SPA and that is
-    // practically safe against CSRF attacks. The CSRF attack vector only opens when we allow
-    // `application/x-www-form-urlencoded` instead of `application/json`.
-    // However, HTTP4S currently ignores the content type when decoding requests as JSON and I don't know how to change
-    // that. Until either problem is solved we actually have to have the CSRF token in order to be safe.
-    val csrfMiddleware: Middleware[OptionTIO#T, Request[IO], Response[IO], Request[IO], Response[IO]] = csrf.validate()
-
-    csrfMiddleware(publicRoutes <+> authMiddleware(authedRoutes)).orNotFound
+  private[application] val routes: HttpApp[IO] = {
+    val allRoutes =
+      Router("/events" -> eventRoutes, "/sessions" -> sessionRoutes, "/users" -> userRoutes)
+    csrfMiddleware(allRoutes).orNotFound
   }
 
   def serve(port: Int): RIO[R with Clock, Unit] = {
