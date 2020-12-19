@@ -28,6 +28,8 @@ libraryDependencies += "com.icegreen" % "greenmail" % "1.6.1" % Test
 
 testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 
+scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings")
+
 javaOptions += "-Duser.timezone=UTC"
 
 fork := true

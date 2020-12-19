@@ -1,13 +1,12 @@
 package eventer.application
 
-import cats.MonoidK.ops.toAllMonoidKOps
 import cats.data.{Kleisli, OptionT}
 import cats.effect.ExitCode
+import cats.syntax.semigroupk._
 import com.typesafe.scalalogging.StrictLogging
 import eventer.application.WebServer._
 import eventer.domain._
 import io.circe.syntax.EncoderOps
-import javax.crypto.SecretKey
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
@@ -20,6 +19,9 @@ import org.http4s.util.CaseInsensitiveString
 import zio.clock.Clock
 import zio.interop.catz._
 import zio.{RIO, UIO, ZIO}
+
+import javax.crypto.SecretKey
+import scala.concurrent.ExecutionContext
 
 object WebServer {
   val CsrfSigningAlgorithm: String = CSRF.SigningAlgo
@@ -176,7 +178,7 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
   def serve(port: Int): RIO[R with Clock, Unit] = {
     import zio.interop.catz._
     ZIO.runtime[R with Clock].flatMap { implicit clock =>
-      BlazeServerBuilder[IO]
+      BlazeServerBuilder[IO](ExecutionContext.global)
         .bindHttp(port, "0.0.0.0")
         .withHttpApp(routes.mapF(_.absorb))
         .withServiceErrorHandler(request => {
