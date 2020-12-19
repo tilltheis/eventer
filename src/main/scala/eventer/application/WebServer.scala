@@ -91,7 +91,11 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
             response <- Created()
           } yield {
             def makeCookie(name: String, content: String, httpOnly: Boolean) =
-              ResponseCookie(name, content, maxAge = Some(expiresInSeconds), secure = true, httpOnly = httpOnly)
+              ResponseCookie(name,
+                             content,
+                             maxAge = Some(expiresInSeconds),
+                             secure = useSecureCookies,
+                             httpOnly = httpOnly)
             response
               .addCookie(makeCookie(JwtSignatureCookieName, signature, httpOnly = true))
               .addCookie(makeCookie(JwtHeaderPayloadCookieName, header + "." + payload, httpOnly = false))
