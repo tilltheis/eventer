@@ -112,7 +112,7 @@ function Login({ onLogin, userSessionRepository }) {
                 type="email"
                 placeholder="Enter email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </Form.Group>
@@ -122,7 +122,7 @@ function Login({ onLogin, userSessionRepository }) {
                 type="password"
                 placeholder="Enter password"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </Form.Group>

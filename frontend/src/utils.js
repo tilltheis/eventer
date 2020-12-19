@@ -13,14 +13,14 @@ export function makeFsm(...stateNames) {
   );
 }
 
-export const inputValueHandler = handler => event => handler(event.target.value);
+export const inputValueHandler = (handler) => (event) => handler(event.target.value);
 
-const okOnly = response => (response.ok ? Promise.resolve(response) : Promise.reject(new Error('not ok')));
+const okOnly = (response) => (response.ok ? Promise.resolve(response) : Promise.reject(new Error('not ok')));
 
 export function httpGet(url) {
   return fetch(url)
     .then(okOnly)
-    .then(response => response.json());
+    .then((response) => response.json());
 }
 
 export function httpPost(url, data) {

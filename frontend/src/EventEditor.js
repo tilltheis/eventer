@@ -14,7 +14,7 @@ import { makeFsm } from './utils';
 dateFnsLocalizer();
 
 const defaultTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-const dropdownTimeZones = listTimeZones().map(tz => ({
+const dropdownTimeZones = listTimeZones().map((tz) => ({
   timeZone: tz,
   humanTimeZone: tz.replace(/_/g, ' '),
 }));

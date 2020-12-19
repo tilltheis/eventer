@@ -5,19 +5,19 @@ import EventEditor from './EventEditor';
 import InMemoryEventRepository from './test/InMemoryEventRepository';
 
 // this cannot be inside of `beforeEach` or within an individual test or it won't work...
-jest.mock('react-widgets/lib/DateTimePicker', () => props => (
-  <input id={`${props.id}_input`} onChange={ev => props.onChange(new Date(ev.target.value))} />
+jest.mock('react-widgets/lib/DateTimePicker', () => (props) => (
+  <input id={`${props.id}_input`} onChange={(ev) => props.onChange(new Date(ev.target.value))} />
 ));
 // id will be set by the EventEditor to work around DropDownList impl limitations
-jest.mock('react-widgets/lib/DropdownList', () => props => (
+jest.mock('react-widgets/lib/DropdownList', () => (props) => (
   <span id={`${props.id}_input`}>
-    <input value={props.defaultValue} onChange={ev => props.onChange({ timeZone: ev.target.value })} />
+    <input value={props.defaultValue} onChange={(ev) => props.onChange({ timeZone: ev.target.value })} />
   </span>
 ));
 
 function resolvablePromise() {
   let resolvePromise;
-  const promise = new Promise(resolve => {
+  const promise = new Promise((resolve) => {
     resolvePromise = resolve;
   });
   return [promise, resolvePromise];
@@ -48,7 +48,7 @@ test('calls repository with correct data and displays a toast and redirects to e
       />
       <Route
         path="*"
-        render={props => {
+        render={(props) => {
           if (props.history.action === 'PUSH') resolveRedirectionPathPromise(props.history.location.pathname);
         }}
       />

@@ -4,7 +4,7 @@ export default class InMemoryEventRepository {
     this.events = (options && options.initialEvents) || [];
 
     const simulateBrokenConnection = options && options.simulateBrokenConnection;
-    this.connection = f => (simulateBrokenConnection ? Promise.reject(new Error('broken connection')) : f());
+    this.connection = (f) => (simulateBrokenConnection ? Promise.reject(new Error('broken connection')) : f());
   }
 
   create(event) {

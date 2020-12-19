@@ -8,12 +8,12 @@ export default class InMemoryUserSessionRepository {
     this.loggedInUser = (options && options.initialLoggedInUser) || null;
 
     const simulateBrokenConnection = options && options.simulateBrokenConnection;
-    this.connection = f => (simulateBrokenConnection ? Promise.reject(new Error('broken connection')) : f());
+    this.connection = (f) => (simulateBrokenConnection ? Promise.reject(new Error('broken connection')) : f());
   }
 
   login(email, password) {
     return this.connection(() => {
-      const foundUser = this.allUsers.find(user => user.email === email && user.password === password);
+      const foundUser = this.allUsers.find((user) => user.email === email && user.password === password);
       if (foundUser !== undefined) {
         this.loggedInUser = foundUser;
         return Promise.resolve(undefined);

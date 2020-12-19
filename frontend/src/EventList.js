@@ -18,7 +18,7 @@ export default class EventList extends React.Component {
   componentDidMount() {
     this.props.eventRepository
       .findAll()
-      .then(events => this.setState({ fsmState: FsmState.Displaying, events }))
+      .then((events) => this.setState({ fsmState: FsmState.Displaying, events }))
       .catch(() => this.setState({ fsmState: FsmState.Failing }));
   }
 
@@ -46,7 +46,7 @@ export default class EventList extends React.Component {
             </tr>
           </thead>
           <tbody>
-            {this.state.events.map(event => (
+            {this.state.events.map((event) => (
               <tr key={event.id}>
                 <td>
                   <a href={`/events/${event.id}`}>✎</a>
