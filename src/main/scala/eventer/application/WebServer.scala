@@ -45,7 +45,7 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
   type IO[A] = RIO[R with Clock, A]
   type OptionTIO = { type T[A] = OptionT[IO, A] }
 
-  private val codecs = new Codecs[IO]
+  private val codecs = Codecs[IO]
   import codecs._
 
   private val dsl = Http4sDsl[IO]
@@ -64,8 +64,6 @@ class WebServer[R, HashT](eventRepository: EventRepository[R],
   }
 
   private val authUser: Kleisli[OptionTIO#T, Request[IO], SessionUser] = Kleisli { request =>
-    val codecs = new Codecs[IO]
-    import codecs._
     val sessionUserM = for {
       jwtHeaderPayload <- UIO(request.cookies.find(_.name == JwtHeaderPayloadCookieName).map(_.content)).get
       jwtSignature <- UIO(request.cookies.find(_.name == JwtSignatureCookieName).map(_.content)).get

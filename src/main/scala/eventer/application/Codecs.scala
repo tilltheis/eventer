@@ -8,7 +8,7 @@ import io.circe.{Codec, Decoder, Encoder}
 import org.http4s.circe.{jsonEncoderOf, jsonOf}
 import org.http4s.{EntityDecoder, EntityEncoder}
 
-class Codecs[F[_]: Sync] {
+trait Codecs[F[_]] {
   private implicit val eventIdEncoder: Encoder[EventId] = _.id.toString.asJson
   private implicit val eventIdDecoder: Decoder[EventId] = Decoder.decodeUUID.map(EventId)
 
@@ -21,6 +21,10 @@ class Codecs[F[_]: Sync] {
   implicit val loginRequestCodec: Codec[LoginRequest] = deriveCodec
   implicit val sessionUserCodec: Codec[SessionUser] = deriveCodec
 
-  implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]): EntityDecoder[F, A] = jsonOf[F, A]
-  implicit def circeJsonEncoder[A](implicit decoder: Encoder[A]): EntityEncoder[F, A] = jsonEncoderOf[F, A]
+  implicit def circeJsonDecoder[A](implicit decoder: Decoder[A], x: Sync[F]): EntityDecoder[F, A] = jsonOf[F, A]
+  implicit def circeJsonEncoder[A](implicit decoder: Encoder[A], x: Sync[F]): EntityEncoder[F, A] = jsonEncoderOf[F, A]
+}
+
+object Codecs {
+  def apply[F[_]]: Codecs[F] = new Codecs[F] {}
 }

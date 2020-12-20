@@ -12,7 +12,7 @@ import zio.test.Assertion._
 import zio.test._
 
 object CodecsSpec {
-  val codecs = new Codecs[Task]
+  val codecs = Codecs[Task]
   import codecs._
 
   val json = Json.obj(

@@ -4,6 +4,8 @@ version := "0.1"
 
 scalaVersion := "2.13.4"
 
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.1" cross CrossVersion.full)
+
 libraryDependencies += "dev.zio" %% "zio" % "1.0.3"
 libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.2.0.1"
 libraryDependencies += "org.http4s" %% "http4s-dsl" % "0.21.14"

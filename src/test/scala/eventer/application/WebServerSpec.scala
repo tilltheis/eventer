@@ -50,7 +50,7 @@ object WebServerSpec {
 
     type IO[A] = webServer.IO[A]
 
-    val codecs = new Codecs[IO]
+    val codecs = Codecs[IO]
     import codecs._
 
     def CsrfRequestM(method: Method, uri: Uri): Task[Request[IO]] =
