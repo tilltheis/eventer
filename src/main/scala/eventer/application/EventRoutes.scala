@@ -1,25 +1,23 @@
 package eventer.application
 
 import cats.syntax.semigroupk._
-import eventer.domain.{EventCreationRequest, EventId, EventRepository, SessionUser}
+import eventer.domain.event.EventRepository2
+import eventer.domain.{EventCreationRequest, EventId, SessionUser}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{AuthedRoutes, HttpRoutes}
 import zio.interop.catz._
-import zio.{RIO, UIO}
+import zio.{Task, UIO}
 
-class EventRoutes[EventRepoR, AuthMiddlewareR](eventRepository: EventRepository[EventRepoR],
-                                               generateEventId: UIO[EventId],
-                                               middlewares: Middlewares[AuthMiddlewareR])
-    extends Http4sDsl[RIO[EventRepoR with AuthMiddlewareR, *]]
-    with Codecs[RIO[EventRepoR with AuthMiddlewareR, *]] {
+class EventRoutes(eventRepository: EventRepository2, generateEventId: UIO[EventId], middlewares: Middlewares)
+    extends Http4sDsl[Task]
+    with Codecs[Task] {
 
-  // The type must match `privateRoutes` so that `<+>` can be used even though this val doesn't need a `Clock`.
-  private val publicRoutes = HttpRoutes.of[RIO[EventRepoR with AuthMiddlewareR, *]] {
+  private val publicRoutes = HttpRoutes.of[Task] {
     case GET -> Root =>
       eventRepository.findAll.flatMap(events => Ok(events))
   }
 
-  private val privateRoutes = AuthedRoutes.of[SessionUser, RIO[EventRepoR with AuthMiddlewareR, *]] {
+  private val privateRoutes = AuthedRoutes.of[SessionUser, Task] {
     case request @ POST -> Root as sessionUser =>
       for {
         eventCreationRequest <- request.req.as[EventCreationRequest]
@@ -30,6 +28,6 @@ class EventRoutes[EventRepoR, AuthMiddlewareR](eventRepository: EventRepository[
       } yield response
   }
 
-  val routes: HttpRoutes[RIO[EventRepoR with AuthMiddlewareR, *]] =
-    publicRoutes <+> middlewares.auth[EventRepoR](privateRoutes)
+  val routes: HttpRoutes[Task] =
+    publicRoutes <+> middlewares.auth(privateRoutes)
 }

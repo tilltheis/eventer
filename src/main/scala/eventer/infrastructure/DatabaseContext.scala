@@ -1,13 +1,15 @@
 package eventer.infrastructure
 
-import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
-import io.getquill.{EntityQuery, Escape, NamingStrategy, PostgresJdbcContext, SnakeCase}
-import zio.RIO
+import io.getquill._
 import zio.blocking.Blocking
+import zio.{RIO, Task}
+
+import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
 
 object DatabaseContext {
 
-  class Service(quillConfigKey: String) extends PostgresJdbcContext(NamingStrategy(SnakeCase, Escape), quillConfigKey) {
+  class Service(quillConfigKey: String, blocking: Blocking.Service)
+      extends PostgresJdbcContext(NamingStrategy(SnakeCase, Escape), quillConfigKey) {
     object schema {
       val event: Quoted[EntityQuery[DbEvent]] = quote(
         querySchema[DbEvent]("event", _.instant -> "date_time", _.zoneId -> "time_zone"))
@@ -24,6 +26,12 @@ object DatabaseContext {
 
     def performEffect_(io: IO[_, _]): RIO[Blocking, Result[Unit]] =
       performEffect(io).unit
+
+    def performEffect2[T](io: IO[T, _]): Task[Result[T]] =
+      blocking.blocking(Task(performIO(io)))
+
+    def performEffect_2(io: IO[_, _]): Task[Result[Unit]] =
+      performEffect2(io).unit
   }
 
 }

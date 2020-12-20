@@ -26,9 +26,8 @@ object Main extends zio.App with StrictLogging {
   type ApplicationEnvironment = Clock with Blocking with DatabaseContext
 
   def applicationLayer(config: Config): URLayer[MainEnvironment, ApplicationEnvironment] = {
-    val db = DatabaseProvider.withMigration(config.db.quillConfigKey)
-    val ctx = ZLayer.fromFunctionMany[DatabaseProvider, DatabaseContext](_.get.database)
-    (db >>> ctx) ++ ZLayer.requires[Blocking] ++ ZLayer.requires[Clock]
+    val ctx = DatabaseProvider.withMigration(config.db.quillConfigKey).map(_.get.database)
+    ctx ++ ZLayer.requires[Blocking] ++ ZLayer.requires[Clock]
   }
 
   def application(config: Config): ZIO[ApplicationEnvironment, Throwable, Unit] = {

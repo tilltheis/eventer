@@ -1,15 +1,12 @@
 package eventer.application
 
-import cats.data.{Kleisli, OptionT}
+import cats.data.OptionT
 import eventer.domain.SessionUser
 import org.http4s.server.Middleware
 import org.http4s.{AuthedRequest, Request, Response}
-import zio.RIO
+import zio.Task
 
-trait Middlewares[AuthR] {
-  def auth[R]: Middleware[OptionT[RIO[R with AuthR, *], *],
-                          AuthedRequest[RIO[R with AuthR, *], SessionUser],
-                          Response[RIO[R with AuthR, *]],
-                          Request[RIO[R with AuthR, *]],
-                          Response[RIO[R with AuthR, *]]]
+trait Middlewares {
+  def auth
+    : Middleware[OptionT[Task, *], AuthedRequest[Task, SessionUser], Response[Task], Request[Task], Response[Task]]
 }

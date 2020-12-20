@@ -2,17 +2,14 @@ package eventer.application
 
 import cats.data.{Kleisli, OptionT}
 import eventer.application.WebServer.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
-import eventer.domain.{SessionService, SessionUser}
+import eventer.domain.SessionUser
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.{AuthMiddleware, Middleware}
 import org.http4s.{AuthedRequest, Request, Response}
-import zio.clock.Clock
 import zio.interop.catz._
-import zio.{RIO, UIO}
+import zio.{Task, UIO}
 
-class MiddlewaresImpl[SessionServiceR](sessionService: SessionService[SessionServiceR])
-    extends Middlewares[SessionServiceR with Clock]
-    with Codecs[UIO] {
+class MiddlewaresImpl[SessionServiceR](jwts: Jwts) extends Middlewares with Codecs[Task] {
 //  private[application] val csrf: CSRF[OptionTIO#T, IO] = {
 //    // Double submit cookie is enough, no need to check Origin header on top of that.
 //    val csrfBuilder: CSRFBuilder[OptionTIO#T, IO] = CSRF(csrfKey, _ => true)
@@ -30,16 +27,14 @@ class MiddlewaresImpl[SessionServiceR](sessionService: SessionService[SessionSer
 
 //  type AuthF[A] = RIO[SessionServiceR with Clock, A]
 
-  private def authUser[R]: Kleisli[OptionT[RIO[R with SessionServiceR with Clock, *], *],
-                                   Request[RIO[R with SessionServiceR with Clock, *]],
-                                   SessionUser] =
+  private def authUser: Kleisli[OptionT[Task, *], Request[Task], SessionUser] =
     Kleisli { request =>
       val sessionUserM = for {
         jwtHeaderPayload <- UIO(request.cookies.find(_.name == JwtHeaderPayloadCookieName).map(_.content)).get
         jwtSignature <- UIO(request.cookies.find(_.name == JwtSignatureCookieName).map(_.content)).get
         jwtHeaderAndPayload <- UIO(Some(jwtHeaderPayload).map(_.split('.')).collect { case Array(x, y) => (x, y) }).get
         (jwtHeader, jwtPayload) = jwtHeaderAndPayload
-        contentJson <- sessionService.decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
+        contentJson <- jwts.decodedJwtHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
         sessionUser <- UIO.succeed(io.circe.parser.decode[SessionUser](contentJson).toOption).get
       } yield sessionUser
       OptionT(sessionUserM.option)
@@ -48,15 +43,12 @@ class MiddlewaresImpl[SessionServiceR](sessionService: SessionService[SessionSer
   // Per default Http4s returns `Unauthorized` which per spec requires a `WWW-Authenticate` header but Http4s doesn't
   // supply it. That's against the spec and that's not cool. Also, that header doesn't make sense for our form based
   // authentication and so the `Unauthorized` HTTP code is inappropriate. We use `Forbidden` instead.
-  override def auth[R]: Middleware[OptionT[RIO[R with SessionServiceR with Clock, *], *],
-                                   AuthedRequest[RIO[R with SessionServiceR with Clock, *], SessionUser],
-                                   Response[RIO[R with SessionServiceR with Clock, *]],
-                                   Request[RIO[R with SessionServiceR with Clock, *]],
-                                   Response[RIO[R with SessionServiceR with Clock, *]]] = {
-    val dsl = Http4sDsl[RIO[R with SessionServiceR with Clock, *]]
+  override def auth
+    : Middleware[OptionT[Task, *], AuthedRequest[Task, SessionUser], Response[Task], Request[Task], Response[Task]] = {
+    val dsl = Http4sDsl[Task]
     import dsl._
 
-    AuthMiddleware.noSpider(authUser[R], _ => Forbidden())
+    AuthMiddleware.noSpider(authUser, _ => Forbidden())
   }
 
   // Having CSRF is more like an additional safety net because we're only planning to have an SPA and that is
