@@ -10,7 +10,6 @@ import eventer.domain.{Event, SessionUser, TestData}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.implicits.http4sLiteralsSyntax
 import org.http4s.server.{AuthMiddleware, Middleware}
-import org.http4s.syntax.kleisli._
 import org.http4s._
 import zio.interop.catz._
 import zio.test.Assertion._
@@ -19,17 +18,11 @@ import zio.{Task, UIO}
 
 object EventRoutesSpec extends DefaultRunnableSpec with Http4sDsl[Task] with Codecs[Task] {
 
-  val alwaysAuthedMiddleware = new Middlewares {
-    override val auth
-      : Middleware[OptionT[Task, *], AuthedRequest[Task, SessionUser], Response[Task], Request[Task], Response[Task]] =
-      AuthMiddleware.noSpider(Kleisli(_ => OptionT.some(TestData.sessionUser)), _ => Forbidden())
-  }
+  val alwaysAuthedMiddleware: AuthMiddleware[Task, SessionUser] =
+    AuthMiddleware.noSpider(Kleisli(_ => OptionT.some(TestData.sessionUser)), _ => Forbidden())
 
-  val neverAuthedMiddleware = new Middlewares {
-    override val auth
-      : Middleware[OptionT[Task, *], AuthedRequest[Task, SessionUser], Response[Task], Request[Task], Response[Task]] =
-      AuthMiddleware.noSpider(Kleisli(_ => OptionT.none), _ => Forbidden())
-  }
+  val neverAuthedMiddleware: AuthMiddleware[Task, SessionUser] =
+    AuthMiddleware.noSpider(Kleisli(_ => OptionT.none), _ => Forbidden())
 
   def parseResponseBody[A](response: Response[Task])(
       implicit F: MonadError[Task, Throwable],

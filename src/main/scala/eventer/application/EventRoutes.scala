@@ -4,11 +4,14 @@ import cats.syntax.semigroupk._
 import eventer.domain.event.EventRepository2
 import eventer.domain.{EventCreationRequest, EventId, SessionUser}
 import org.http4s.dsl.Http4sDsl
+import org.http4s.server.AuthMiddleware
 import org.http4s.{AuthedRoutes, HttpRoutes}
 import zio.interop.catz._
 import zio.{Task, UIO}
 
-class EventRoutes(eventRepository: EventRepository2, generateEventId: UIO[EventId], middlewares: Middlewares)
+class EventRoutes(eventRepository: EventRepository2,
+                  generateEventId: UIO[EventId],
+                  authMiddleware: AuthMiddleware[Task, SessionUser])
     extends Http4sDsl[Task]
     with Codecs[Task] {
 
@@ -28,6 +31,5 @@ class EventRoutes(eventRepository: EventRepository2, generateEventId: UIO[EventI
       } yield response
   }
 
-  val routes: HttpRoutes[Task] =
-    publicRoutes <+> middlewares.auth(privateRoutes)
+  val routes: HttpRoutes[Task] = publicRoutes <+> authMiddleware(privateRoutes)
 }
