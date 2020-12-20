@@ -1,7 +1,7 @@
 package eventer.application
 
 import cats.syntax.semigroupk._
-import eventer.application.WebServer.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
+import eventer.application.SessionRoutes.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
 import eventer.domain.session.SessionService2
 import eventer.domain.{LoginRequest, SessionUser}
 import io.circe.syntax.EncoderOps
@@ -31,8 +31,8 @@ class SessionRoutes(clock: Clock.Service,
           now <- clock.currentDateTime
           expiresAt = now.plusDays(30)
           expiresInSeconds = expiresAt.toEpochSecond - now.toEpochSecond
-          (header, payload, signature) <- jwts.encodedJwtHeaderPayloadSignature(sessionUser.asJson.noSpaces,
-                                                                                expiresAt.toInstant)
+          (header, payload, signature) <- jwts.encodeJwtIntoHeaderPayloadSignature(sessionUser.asJson.noSpaces,
+                                                                                   expiresAt.toInstant)
           response <- Created()
         } yield {
           def makeCookie(name: String, content: String, httpOnly: Boolean) =

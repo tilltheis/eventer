@@ -9,16 +9,16 @@ import java.util.concurrent.TimeUnit
 import javax.crypto.SecretKey
 
 class JwtsImpl(jwtSigningKey: SecretKey, clock: Clock.Service) extends Jwts {
-  override def encodedJwtHeaderPayloadSignature(content: String, expiresAt: Instant): UIO[(String, String, String)] =
+  override def encodeJwtIntoHeaderPayloadSignature(content: String, expiresAt: Instant): UIO[(String, String, String)] =
     clock.currentTime(TimeUnit.SECONDS).map { now =>
       val claim = JwtClaim(content, issuedAt = Some(now), expiration = Some(expiresAt.getEpochSecond))
       val Array(header, payload, signature) = Jwt.encode(claim, jwtSigningKey, JwtAlgorithm.HS256).split('.')
       (header, payload, signature)
     }
 
-  override def decodedJwtHeaderPayloadSignature(header: String,
-                                                payload: String,
-                                                signature: String): IO[InvalidJwtFormat.type, String] = {
+  override def decodeJwtFromHeaderPayloadSignature(header: String,
+                                                   payload: String,
+                                                   signature: String): IO[InvalidJwtFormat.type, String] = {
     clock
       .currentTime(TimeUnit.SECONDS)
       .map { now =>

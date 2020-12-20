@@ -26,7 +26,7 @@ object SessionRoutesSpec extends RoutesSpec {
           _ <- TestClock.adjust(duration)
           service <- InMemorySessionService2.make(Map(TestData.loginRequest -> TestData.sessionUser))
           clock <- ZIO.environment[Clock]
-          routes = new SessionRoutes(clock.get, new TestJwts, service, neverAuthedMiddleware, useSecureCookies = true)
+          routes = new SessionRoutes(clock.get, TestJwts, service, neverAuthedMiddleware, useSecureCookies = true)
           request = Request(Method.POST, uri"/").withEntity(TestData.loginRequest)
           response <- routes.routes.run(request).value.someOrFailException
           body <- parseResponseBody[Unit](response)
@@ -44,13 +44,25 @@ object SessionRoutesSpec extends RoutesSpec {
           assert(body)(isNone)
         }
       },
+      testM("rejects the request if the credentials are incorrect") {
+        for {
+          service <- InMemorySessionService2.empty
+          clock <- ZIO.environment[Clock]
+          routes = new SessionRoutes(clock.get, TestJwts, service, neverAuthedMiddleware, useSecureCookies = true)
+          request = Request[Task](Method.POST, uri"/sessions").withEntity(TestData.loginRequest)
+          response <- routes.routes.run(request).value.someOrFailException
+          body <- parseResponseBody[Unit](response)
+        } yield
+          assert(response.status)(equalTo(Status.Forbidden)) &&
+            assert(body)(isNone)
+      },
     ),
     suite("DELETE /")(
       testM("deletes the jwt cookies when already logged in") {
         for {
           service <- InMemorySessionService2.empty
           clock <- ZIO.environment[Clock]
-          routes = new SessionRoutes(clock.get, new TestJwts, service, alwaysAuthedMiddleware, useSecureCookies = true)
+          routes = new SessionRoutes(clock.get, TestJwts, service, alwaysAuthedMiddleware, useSecureCookies = true)
           request = Request[Task](Method.DELETE, uri"/")
           response <- routes.routes.run(request).value.someOrFailException
           body <- parseResponseBody[Unit](response)
@@ -71,7 +83,7 @@ object SessionRoutesSpec extends RoutesSpec {
         for {
           service <- InMemorySessionService2.empty
           clock <- ZIO.environment[Clock]
-          routes = new SessionRoutes(clock.get, new TestJwts, service, neverAuthedMiddleware, useSecureCookies = true)
+          routes = new SessionRoutes(clock.get, TestJwts, service, neverAuthedMiddleware, useSecureCookies = true)
           request = Request[Task](Method.DELETE, uri"/")
           response <- routes.routes.run(request).value.someOrFailException
           body <- parseResponseBody[Unit](response)

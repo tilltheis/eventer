@@ -6,13 +6,17 @@ import cats.instances.option._
 import cats.syntax.traverse._
 import eventer.domain.{SessionUser, TestData}
 import org.http4s.dsl.Http4sDsl
-import org.http4s.server.AuthMiddleware
+import org.http4s.server.{AuthMiddleware, HttpMiddleware}
 import org.http4s.{EntityDecoder, Response}
 import zio.interop.catz._
 import zio.test.DefaultRunnableSpec
 import zio.{Task, UIO}
 
 abstract class RoutesSpec extends DefaultRunnableSpec with Http4sDsl[Task] with Codecs[Task] {
+  val alwaysVerifiedCsrfMiddleware: HttpMiddleware[Task] = identity
+
+  val neverVerifiedCsrfMiddleware: HttpMiddleware[Task] = Function.const(Kleisli.pure(Response(Forbidden)))
+
   val alwaysAuthedMiddleware: AuthMiddleware[Task, SessionUser] =
     AuthMiddleware.noSpider(Kleisli(_ => OptionT.some(TestData.sessionUser)), _ => Forbidden())
 
