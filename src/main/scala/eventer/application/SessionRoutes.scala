@@ -1,7 +1,7 @@
 package eventer.application
 
 import cats.syntax.semigroupk._
-import eventer.application.SessionRoutes.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
+import eventer.application.Middlewares.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
 import eventer.domain.session.SessionService2
 import eventer.domain.{LoginRequest, SessionUser}
 import io.circe.syntax.EncoderOps
@@ -11,11 +11,6 @@ import org.http4s.server.AuthMiddleware
 import zio.Task
 import zio.clock.Clock
 import zio.interop.catz._
-
-object SessionRoutes {
-  private[application] val JwtSignatureCookieName = "jwt-signature"
-  private[application] val JwtHeaderPayloadCookieName = "jwt-header.payload"
-}
 
 class SessionRoutes(clock: Clock.Service,
                     jwts: Jwts,

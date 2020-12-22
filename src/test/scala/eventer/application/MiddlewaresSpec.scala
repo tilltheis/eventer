@@ -2,6 +2,7 @@ package eventer.application
 
 import cats.data.OptionT
 import eventer.TestEnvSpec
+import eventer.application.Middlewares.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
 import eventer.domain.{SessionUser, TestData}
 import io.circe.syntax.EncoderOps
 import org.http4s._
@@ -76,9 +77,9 @@ object MiddlewaresSpec extends RoutesSpec {
     suite("auth")(
       testM("parses user from cookies") {
         val request = Request[Task]()
-          .addCookie(SessionRoutes.JwtHeaderPayloadCookieName,
+          .addCookie(JwtHeaderPayloadCookieName,
                      s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}")
-          .addCookie(SessionRoutes.JwtSignatureCookieName, "signature")
+          .addCookie(JwtSignatureCookieName, "signature")
 
         for {
           response <- middleware(routes).run(request).value.someOrFailException
@@ -87,8 +88,8 @@ object MiddlewaresSpec extends RoutesSpec {
       },
       testM("rejects the request if cookie cannot be parsed") {
         val request = Request[Task]()
-          .addCookie(SessionRoutes.JwtHeaderPayloadCookieName, s"header.invalid-payload")
-          .addCookie(SessionRoutes.JwtSignatureCookieName, "signature")
+          .addCookie(JwtHeaderPayloadCookieName, s"header.invalid-payload")
+          .addCookie(JwtSignatureCookieName, "signature")
 
         for {
           response <- middleware(routes).run(request).value.someOrFailException
@@ -97,7 +98,7 @@ object MiddlewaresSpec extends RoutesSpec {
       },
       testM("rejects the request if cookies are missing") {
         val request = Request[Task]()
-          .addCookie(SessionRoutes.JwtHeaderPayloadCookieName,
+          .addCookie(JwtHeaderPayloadCookieName,
                      s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}")
 
         for {

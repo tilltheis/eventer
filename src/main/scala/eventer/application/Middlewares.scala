@@ -1,7 +1,6 @@
 package eventer.application
 
 import cats.data.{Kleisli, OptionT}
-import eventer.application.SessionRoutes.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
 import eventer.domain.SessionUser
 import org.http4s.Request
 import org.http4s.dsl.Http4sDsl
@@ -19,6 +18,9 @@ object Middlewares extends Http4sDsl[Task] with Codecs[Task] {
 
   private[application] val CsrfTokenCookieName = "csrf-token"
   private[application] val CsrfTokenHeaderName = "X-Csrf-Token"
+
+  private[application] val JwtSignatureCookieName = "jwt-signature"
+  private[application] val JwtHeaderPayloadCookieName = "jwt-header.payload"
 
   // Having CSRF is more like an additional safety net because we're only planning to have an SPA and that is
   // practically safe against CSRF attacks. The CSRF attack vector only opens when we allow
