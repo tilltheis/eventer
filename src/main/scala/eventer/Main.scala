@@ -34,7 +34,7 @@ object Main extends zio.App with StrictLogging {
   def application(config: Config): ZIO[ApplicationEnvironment, Throwable, Unit] = {
     ZIO.service[DatabaseContext.Service].flatMap { dbCtx =>
       ZIO.service[Clock.Service].flatMap { clock =>
-        val userRepository = new DbUserRepository2[BlowfishHash](dbCtx, _.hash, BlowfishHash.unsafeFromHashString)
+        val userRepository = new DbUserRepository[BlowfishHash](dbCtx, _.hash, BlowfishHash.unsafeFromHashString)
         val eventRepository = new DbEventRepository(dbCtx)
         val emailSender =
           new EmailSenderImpl2(config.email.host,

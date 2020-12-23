@@ -2,14 +2,14 @@ package eventer.domain.session
 
 import eventer.TestEnvSpec
 import eventer.domain.session.SessionService.InvalidCredentials
-import eventer.domain.user.InMemoryUserRepository2
+import eventer.domain.user.InMemoryUserRepository
 import eventer.domain.{PlaintextCryptoHashing, TestData}
 import zio.test.Assertion.equalTo
 import zio.test._
 
 object SessionServiceImpl2Spec extends DefaultRunnableSpec {
   private val cryptoHashing = new PlaintextCryptoHashing
-  private val userRepositoryM = InMemoryUserRepository2.make(Set(TestData.user))
+  private val userRepositoryM = InMemoryUserRepository.make(Set(TestData.user))
   private val sessionServiceM = userRepositoryM.map(new SessionServiceImpl(_, cryptoHashing))
 
   val spec: TestEnvSpec = suite("SessionServiceImpl")(
