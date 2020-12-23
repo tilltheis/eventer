@@ -1,15 +1,16 @@
 package eventer.infrastructure
 
 import com.icegreen.greenmail.util.{GreenMail, GreenMailUtil, ServerSetupTest}
-import eventer.TestEnvSpec
+import eventer.EventerSpec
 import eventer.domain.Email
 import eventer.infrastructure.EmailSenderImpl.NoAuthentication
+import zio.test.Assertion._
+import zio.test._
+
 import javax.mail.Message.RecipientType
 import javax.mail.internet.MimeMessage
-import zio.test._
-import zio.test.Assertion._
 
-object EmailSenderImplSpec extends DefaultRunnableSpec {
+object EmailSenderImplSpec extends EventerSpec {
   val spec: TestEnvSpec = suite("EmailSenderImpl")(suite("sendEmail")(testM("works") {
     val greenMail = new GreenMail(ServerSetupTest.SMTP)
     greenMail.start()

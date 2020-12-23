@@ -1,6 +1,5 @@
 package eventer.application
 
-import eventer.TestEnvSpec
 import org.http4s._
 import org.http4s.implicits._
 import zio._

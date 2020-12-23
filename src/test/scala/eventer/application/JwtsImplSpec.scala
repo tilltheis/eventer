@@ -1,6 +1,6 @@
 package eventer.application
 
-import eventer.TestEnvSpec
+import eventer.{Base64, EventerSpec}
 import eventer.application.JwtsImpl.JwtSigningAlgorithm
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, parser}
@@ -9,12 +9,12 @@ import zio.clock.Clock
 import zio.duration.Duration
 import zio.test.Assertion.{equalTo, isNone, isSome, not}
 import zio.test.environment.TestClock
-import zio.test.{DefaultRunnableSpec, assert, suite, testM}
+import zio.test.{assert, suite, testM}
 
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
-object JwtsImplSpec extends DefaultRunnableSpec {
+object JwtsImplSpec extends EventerSpec {
   private val keyString = "I57lQ6u3M2SgWzjuqj+tyviRaSpBGsLxcJhprwVEonI="
   private val key = eventer.util.unsafeSecretKeyFromBase64(keyString, JwtSigningAlgorithm)
   private val jwtsM = ZIO.service[Clock.Service].map(new JwtsImpl(key, _))
@@ -29,8 +29,8 @@ object JwtsImplSpec extends DefaultRunnableSpec {
           _ <- TestClock.adjust(Duration(13, TimeUnit.SECONDS))
           jwt <- jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
           (jwtHeader, jwtPayload, _) = jwt
-          jsonHeader <- eventer.base64Decode(jwtHeader).map(parser.parse).rightOrFail(new RuntimeException)
-          jsonPayload <- eventer.base64Decode(jwtPayload).map(parser.parse).rightOrFail(new RuntimeException)
+          jsonHeader <- Base64.decode(jwtHeader).map(parser.parse).rightOrFail(new RuntimeException)
+          jsonPayload <- Base64.decode(jwtPayload).map(parser.parse).rightOrFail(new RuntimeException)
         } yield
           assert(jsonHeader)(equalTo(Json.obj("alg" -> "HS256".asJson, "typ" -> "JWT".asJson))) &&
             assert(jsonPayload)(

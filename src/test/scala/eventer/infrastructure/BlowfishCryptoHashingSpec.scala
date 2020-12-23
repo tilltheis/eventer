@@ -1,10 +1,10 @@
 package eventer.infrastructure
 
-import eventer.TestEnvSpec
+import eventer.EventerSpec
 import zio.test.Assertion._
 import zio.test._
 
-object BlowfishCryptoHashingSpec extends DefaultRunnableSpec {
+object BlowfishCryptoHashingSpec extends EventerSpec {
   val spec: TestEnvSpec =
     suite("BlowfishCryptoHashing")(
       suite("verify")(

@@ -1,8 +1,7 @@
 package eventer.application
 
-import eventer.TestEnvSpec
 import eventer.domain.{Event, TestData}
-import eventer.infrastructure.TestEventRepository
+import eventer.infrastructure.InMemoryEventRepository
 import org.http4s._
 import org.http4s.implicits.http4sLiteralsSyntax
 import zio.UIO
@@ -15,7 +14,7 @@ object EventRoutesSpec extends RoutesSpec {
     suite("GET /")(testM("returns the events from the repository") {
       val events = Seq(TestData.event, TestData.event)
       for {
-        repository <- TestEventRepository.make(events)
+        repository <- InMemoryEventRepository.make(events)
         routes = new EventRoutes(repository, UIO.succeed(TestData.eventId), neverAuthedMiddleware)
         response <- routes.routes.run(Request(Method.GET, uri"/")).value.someOrFailException
         body <- parseResponseBody[Seq[Event]](response)
@@ -26,7 +25,7 @@ object EventRoutesSpec extends RoutesSpec {
     suite("POST /")(
       testM("inserts the event into the repository") {
         for {
-          repository <- TestEventRepository.empty
+          repository <- InMemoryEventRepository.empty
           routes = new EventRoutes(repository, UIO.succeed(TestData.eventId), alwaysAuthedMiddleware)
           request = Request(Method.POST, uri"/").withEntity(TestData.eventCreationRequest)
           response <- routes.routes.run(request).value.someOrFailException
@@ -39,7 +38,7 @@ object EventRoutesSpec extends RoutesSpec {
       },
       testM("rejects requests that are not authenticated") {
         for {
-          repository <- TestEventRepository.empty
+          repository <- InMemoryEventRepository.empty
           routes = new EventRoutes(repository, UIO.succeed(TestData.eventId), neverAuthedMiddleware)
           request = Request(Method.POST, uri"/").withEntity(TestData.event)
           response <- routes.routes.run(request).value.someOrFailException

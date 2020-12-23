@@ -2,7 +2,6 @@ package eventer.infrastructure
 
 import eventer.domain.user.UserRepository.EmailAlreadyInUse
 import eventer.domain.{TestData, User, UserId}
-import eventer.{TestEnvSpec, dbTestM}
 import zio.ZIO
 import zio.test.Assertion._
 import zio.test._
@@ -22,16 +21,16 @@ object DbUserRepositorySpec extends DbSpec {
     performEffect(runIO(q)).orDie
   }
 
-  lazy val dbSpec: TestEnvSpec = suite("DbUserRepository")(
+  lazy val dbSpec: DbEnvSpec = suite("DbUserRepository")(
     suite("create")(
-      dbTestM("inserts the given user into the DB") {
+      testM("inserts the given user into the DB") {
         for {
           userRepository <- userRepositoryM
           _ <- userRepository.create(TestData.user)
           foundUsers <- findAll
         } yield assert(foundUsers)(equalTo(Seq(TestData.user)))
       },
-      dbTestM("fails if an account with the same email already exists") {
+      testM("fails if an account with the same email already exists") {
         for {
           userRepository <- userRepositoryM
           _ <- userRepository.create(TestData.user)
@@ -40,7 +39,7 @@ object DbUserRepositorySpec extends DbSpec {
       }
     ),
     suite("findByEmail")(
-      dbTestM("returns the user with the given email address if it exists") {
+      testM("returns the user with the given email address if it exists") {
         for {
           userRepository <- userRepositoryM
           _ <- userRepository.create(TestData.user)
@@ -48,13 +47,13 @@ object DbUserRepositorySpec extends DbSpec {
           foundUser <- userRepository.findByEmail(TestData.user.email)
         } yield assert(foundUser)(isSome(equalTo(TestData.user)))
       },
-      dbTestM("returns nothing if the DB is empty") {
+      testM("returns nothing if the DB is empty") {
         for {
           userRepository <- userRepositoryM
           foundUser <- userRepository.findByEmail(TestData.user.email)
         } yield assert(foundUser)(isNone)
       },
-      dbTestM("returns nothing if no event with the given id exists") {
+      testM("returns nothing if no event with the given id exists") {
         for {
           userRepository <- userRepositoryM
           _ <- userRepository.create(TestData.user)

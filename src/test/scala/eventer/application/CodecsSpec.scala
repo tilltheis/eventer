@@ -1,17 +1,16 @@
 package eventer.application
 
-import java.time.format.DateTimeFormatter
-
-import eventer.TestEnvSpec
+import eventer.EventerSpec
 import eventer.domain.{Event, TestData}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import zio.Task
-import zio.interop.catz._
 import zio.test.Assertion._
 import zio.test._
 
-object CodecsSpec extends DefaultRunnableSpec {
+import java.time.format.DateTimeFormatter
+
+object CodecsSpec extends EventerSpec {
   val codecs = Codecs[Task]
   import codecs._
 

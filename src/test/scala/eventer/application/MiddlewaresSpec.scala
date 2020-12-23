@@ -1,7 +1,7 @@
 package eventer.application
 
 import cats.data.OptionT
-import eventer.TestEnvSpec
+import eventer.Base64
 import eventer.application.Middlewares.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
 import eventer.domain.{SessionUser, TestData}
 import io.circe.syntax.EncoderOps
@@ -77,8 +77,7 @@ object MiddlewaresSpec extends RoutesSpec {
     suite("auth")(
       testM("parses user from cookies") {
         val request = Request[Task]()
-          .addCookie(JwtHeaderPayloadCookieName,
-                     s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}")
+          .addCookie(JwtHeaderPayloadCookieName, s"header.${Base64.encode(TestData.sessionUser.asJson.noSpaces)}")
           .addCookie(JwtSignatureCookieName, "signature")
 
         for {
@@ -98,8 +97,7 @@ object MiddlewaresSpec extends RoutesSpec {
       },
       testM("rejects the request if cookies are missing") {
         val request = Request[Task]()
-          .addCookie(JwtHeaderPayloadCookieName,
-                     s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}")
+          .addCookie(JwtHeaderPayloadCookieName, s"header.${Base64.encode(TestData.sessionUser.asJson.noSpaces)}")
 
         for {
           response <- middleware(routes).run(request).value.someOrFailException

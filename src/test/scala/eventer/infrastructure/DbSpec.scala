@@ -1,9 +1,10 @@
 package eventer.infrastructure
 
+import eventer.EventerSpec
 import zio.test.environment.TestEnvironment
-import zio.test.{DefaultRunnableSpec, TestAspect, ZSpec}
+import zio.test.{TestAspect, ZSpec}
 
-trait DbSpec extends DefaultRunnableSpec {
+trait DbSpec extends EventerSpec {
   type DbEnv = DatabaseContext with TestEnvironment
   type DbEnvSpec = ZSpec[DbEnv, Any]
 

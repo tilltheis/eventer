@@ -1,6 +1,6 @@
 package eventer.application
 
-import eventer.TestEnvSpec
+import eventer.Base64
 import eventer.domain.TestData
 import eventer.domain.session.InMemorySessionService
 import io.circe.syntax.EncoderOps
@@ -39,7 +39,7 @@ object SessionRoutesSpec extends RoutesSpec {
           assert(response.cookies)(
             contains(
               makeCookie("jwt-header.payload",
-                         s"header.${eventer.base64Encode(TestData.sessionUser.asJson.noSpaces)}",
+                         s"header.${Base64.encode(TestData.sessionUser.asJson.noSpaces)}",
                          httpOnly = false))) &&
           assert(body)(isNone)
         }
