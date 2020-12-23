@@ -11,7 +11,7 @@ import zio.interop.catz._
 import zio.test.Assertion._
 import zio.test._
 
-object CodecsSpec {
+object CodecsSpec extends DefaultRunnableSpec {
   val codecs = Codecs[Task]
   import codecs._
 
