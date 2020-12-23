@@ -2,7 +2,7 @@ package eventer.application
 
 import eventer.TestEnvSpec
 import eventer.domain.TestData
-import eventer.domain.session.InMemorySessionService2
+import eventer.domain.session.InMemorySessionService
 import io.circe.syntax.EncoderOps
 import org.http4s._
 import org.http4s.implicits.http4sLiteralsSyntax
@@ -24,7 +24,7 @@ object SessionRoutesSpec extends RoutesSpec {
         for {
           // just not start at 0 to avoid bugs when converting between epoch seconds and second durations
           _ <- TestClock.adjust(duration)
-          service <- InMemorySessionService2.make(Map(TestData.loginRequest -> TestData.sessionUser))
+          service <- InMemorySessionService.make(Map(TestData.loginRequest -> TestData.sessionUser))
           clock <- ZIO.environment[Clock]
           routes = new SessionRoutes(clock.get, TestJwts, service, neverAuthedMiddleware, useSecureCookies = true)
           request = Request(Method.POST, uri"/").withEntity(TestData.loginRequest)
@@ -46,7 +46,7 @@ object SessionRoutesSpec extends RoutesSpec {
       },
       testM("rejects the request if the credentials are incorrect") {
         for {
-          service <- InMemorySessionService2.empty
+          service <- InMemorySessionService.empty
           clock <- ZIO.environment[Clock]
           routes = new SessionRoutes(clock.get, TestJwts, service, neverAuthedMiddleware, useSecureCookies = true)
           request = Request[Task](Method.POST, uri"/sessions").withEntity(TestData.loginRequest)
@@ -60,7 +60,7 @@ object SessionRoutesSpec extends RoutesSpec {
     suite("DELETE /")(
       testM("deletes the jwt cookies when already logged in") {
         for {
-          service <- InMemorySessionService2.empty
+          service <- InMemorySessionService.empty
           clock <- ZIO.environment[Clock]
           routes = new SessionRoutes(clock.get, TestJwts, service, alwaysAuthedMiddleware, useSecureCookies = true)
           request = Request[Task](Method.DELETE, uri"/")
@@ -81,7 +81,7 @@ object SessionRoutesSpec extends RoutesSpec {
       },
       testM("rejects the request when not logged in") {
         for {
-          service <- InMemorySessionService2.empty
+          service <- InMemorySessionService.empty
           clock <- ZIO.environment[Clock]
           routes = new SessionRoutes(clock.get, TestJwts, service, neverAuthedMiddleware, useSecureCookies = true)
           request = Request[Task](Method.DELETE, uri"/")

@@ -1,9 +1,13 @@
 package eventer.domain.session
 
-import eventer.domain.SessionService.InvalidCredentials
+import eventer.domain.session.SessionService.InvalidCredentials
 import eventer.domain.{LoginRequest, SessionUser}
 import zio.IO
 
-trait SessionService2 {
+object SessionService {
+  object InvalidCredentials
+}
+
+trait SessionService {
   def login(loginRequest: LoginRequest): IO[InvalidCredentials.type, SessionUser]
 }

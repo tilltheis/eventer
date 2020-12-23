@@ -5,7 +5,7 @@ import com.typesafe.scalalogging.StrictLogging
 import eventer.application.{EventRoutes, JwtsImpl, Middlewares, SessionRoutes, UserRoutes, WebServer}
 import eventer.domain.BlowfishCryptoHashing.BlowfishHash
 import eventer.domain._
-import eventer.domain.session.SessionServiceImpl2
+import eventer.domain.session.SessionServiceImpl
 import eventer.infrastructure.EmailSenderImpl.PasswordAuthentication
 import eventer.infrastructure._
 import pureconfig.ConfigSource
@@ -54,9 +54,9 @@ object Main extends zio.App with StrictLogging {
             .option
             .absorb
             .ignore // catch duplicate insert exceptions
-          jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, SessionServiceImpl.JwtSigningAlgorithm)
+          jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, JwtsImpl.JwtSigningAlgorithm)
           csrfKey <- util.secretKeyFromBase64(config.server.csrfSigningKeyBase64, Middlewares.CsrfSigningAlgorithm)
-          sessionService = new SessionServiceImpl2(userRepository, cryptoHashing)
+          sessionService = new SessionServiceImpl(userRepository, cryptoHashing)
           jwts = new JwtsImpl(jwtKey, clock)
           webServer = new WebServer(
             eventRoutes =

@@ -1,5 +1,5 @@
 package eventer.application
-import eventer.domain.SessionService.InvalidJwtFormat
+import eventer.application.Jwts.InvalidJwtFormat
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtOptions}
 import zio.clock.Clock
 import zio.{IO, UIO}
@@ -7,6 +7,10 @@ import zio.{IO, UIO}
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.crypto.SecretKey
+
+object JwtsImpl {
+  val JwtSigningAlgorithm: String = JwtAlgorithm.HS256.fullName
+}
 
 class JwtsImpl(jwtSigningKey: SecretKey, clock: Clock.Service) extends Jwts {
   override def encodeJwtIntoHeaderPayloadSignature(content: String, expiresAt: Instant): UIO[(String, String, String)] =
