@@ -3,7 +3,8 @@ package eventer.domain.session
 import eventer.TestEnvSpec
 import eventer.domain.session.SessionService.InvalidCredentials
 import eventer.domain.user.InMemoryUserRepository
-import eventer.domain.{PlaintextCryptoHashing, TestData}
+import eventer.domain.TestData
+import eventer.infrastructure.PlaintextCryptoHashing
 import zio.test.Assertion.equalTo
 import zio.test._
 

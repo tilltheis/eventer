@@ -3,9 +3,9 @@ package eventer
 import java.util.UUID
 import com.typesafe.scalalogging.StrictLogging
 import eventer.application.{EventRoutes, JwtsImpl, Middlewares, SessionRoutes, UserRoutes, WebServer}
-import eventer.domain.BlowfishCryptoHashing.BlowfishHash
 import eventer.domain._
 import eventer.domain.session.SessionServiceImpl
+import eventer.infrastructure.BlowfishCryptoHashing.BlowfishHash
 import eventer.infrastructure.EmailSenderImpl.PasswordAuthentication
 import eventer.infrastructure._
 import pureconfig.ConfigSource

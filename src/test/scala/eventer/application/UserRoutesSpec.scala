@@ -2,8 +2,8 @@ package eventer.application
 
 import eventer.TestEnvSpec
 import eventer.domain.user.InMemoryUserRepository
-import eventer.domain.{PlaintextCryptoHashing, TestData}
-import eventer.infrastructure.InMemoryEmailSender2
+import eventer.domain.TestData
+import eventer.infrastructure.{InMemoryEmailSender2, PlaintextCryptoHashing}
 import org.http4s._
 import org.http4s.implicits.http4sLiteralsSyntax
 import zio.interop.catz._
