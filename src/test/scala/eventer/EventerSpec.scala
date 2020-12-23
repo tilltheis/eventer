@@ -11,9 +11,8 @@ object EventerSpec extends DefaultRunnableSpec {
   override def spec: ZSpec[TestEnvironment, Any] =
     suite("eventer")(
       suite("domain")(CodecsSpec.spec, BlowfishCryptoHashingSpec.spec, SessionServiceImplSpec.spec),
-      suite("infrastructure")(
-        suite("database")(DbEventRepositorySpec.spec, DbUserRepositorySpec.spec) @@ TestAspect.sequential,
-        EmailSenderImplSpec.spec)
+      suite("infrastructure")(suite("database")(DbUserRepositorySpec.spec) @@ TestAspect.sequential,
+                              EmailSenderImplSpec.spec)
     )
 
 }

@@ -1,21 +1,23 @@
 package eventer.infrastructure
 
 import java.util.UUID
-
 import eventer.domain.{EventId, TestData}
-import eventer.{TestEnvSpec, dbTestM}
+import zio.{Has, URIO, ZIO}
 import zio.test.Assertion._
 import zio.test._
 
-object DbEventRepositorySpec {
+object DbEventRepositorySpec extends DbSpec {
   private val userRepository = new DbUserRepository[String](identity, identity)
-  private val eventRepository = new DbEventRepository()
   private val otherId = EventId(UUID.fromString("b10c8d00-659e-4d2a-aa3b-0aea3d60c2ca"))
 
-  val spec: TestEnvSpec = suite("DbEventRepository")(
+  private val liveEventRepository: URIO[Has[DatabaseContext.Service], DbEventRepository] =
+    ZIO.service[DatabaseContext.Service].map(new DbEventRepository(_))
+
+  val dbSpec: DbEnvSpec = suite("DbEventRepository")(
     suite("create")(
-      dbTestM("inserts the given event into the DB") {
+      testM("inserts the given event into the DB") {
         for {
+          eventRepository <- liveEventRepository
           _ <- userRepository.create(TestData.user)
           _ <- eventRepository.create(TestData.event)
           foundEvent <- eventRepository.findAll
@@ -23,33 +25,37 @@ object DbEventRepositorySpec {
       }
     ),
     suite("findAll")(
-      dbTestM("returns all events from the DB") {
+      testM("returns all events from the DB") {
         for {
+          eventRepository <- liveEventRepository
           _ <- userRepository.create(TestData.user)
           _ <- eventRepository.create(TestData.event)
           _ <- eventRepository.create(TestData.event.copy(id = otherId))
           foundEvents <- eventRepository.findAll
         } yield assert(foundEvents)(equalTo(Seq(TestData.event, TestData.event.copy(id = otherId))))
       },
-      dbTestM("returns nothing if the DB is empty") {
-        assertM(eventRepository.findAll)(isEmpty)
+      testM("returns nothing if the DB is empty") {
+        assertM(liveEventRepository.flatMap(_.findAll))(isEmpty)
       }
     ),
     suite("findById")(
-      dbTestM("returns the event with the given id if it exists") {
+      testM("returns the event with the given id if it exists") {
         for {
+          eventRepository <- liveEventRepository
           _ <- userRepository.create(TestData.user)
           _ <- eventRepository.create(TestData.event)
           foundEvent <- eventRepository.findById(TestData.event.id)
         } yield assert(foundEvent)(isSome(equalTo(TestData.event)))
       },
-      dbTestM("returns nothing if the DB is empty") {
+      testM("returns nothing if the DB is empty") {
         for {
+          eventRepository <- liveEventRepository
           foundEvent <- eventRepository.findById(TestData.event.id)
         } yield assert(foundEvent)(isNone)
       },
-      dbTestM("returns nothing if no event with the given id exists") {
+      testM("returns nothing if no event with the given id exists") {
         for {
+          eventRepository <- liveEventRepository
           _ <- userRepository.create(TestData.user)
           _ <- eventRepository.create(TestData.event)
           foundEvent <- eventRepository.findById(otherId)

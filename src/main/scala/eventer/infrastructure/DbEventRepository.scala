@@ -1,25 +1,24 @@
 package eventer.infrastructure
 
-import eventer.domain.{Event, EventId, EventRepository}
-import zio.URIO
-import zio.blocking.Blocking
+import eventer.domain.event.EventRepository
+import eventer.domain.{Event, EventId}
+import zio.UIO
 
-class DbEventRepository extends EventRepository[DatabaseContext with Blocking] {
-  override def create(event: Event): URIO[DatabaseContext with Blocking, Unit] = withCtx { ctx =>
-    import ctx._
+class DbEventRepository(ctx: DatabaseContext.Service) extends EventRepository {
+  import ctx._
+
+  override def create(event: Event): UIO[Unit] = {
     val q = quote(schema.event.insert(lift(DbEvent.fromEvent(event))))
-    performEffect_(runIO(q)).orDie
+    performEffect_2(runIO(q)).orDie
   }
 
-  override val findAll: URIO[DatabaseContext with Blocking, Seq[Event]] = withCtx { ctx =>
-    import ctx._
+  override val findAll: UIO[Seq[Event]] = {
     val q = quote(schema.event)
-    performEffect(runIO(q)).map(_.map(_.toEvent)).orDie
+    performEffect2(runIO(q)).map(_.map(_.toEvent)).orDie
   }
 
-  override def findById(id: EventId): URIO[DatabaseContext with Blocking, Option[Event]] = withCtx { ctx =>
-    import ctx._
+  override def findById(id: EventId): UIO[Option[Event]] = {
     val q = quote(schema.event.filter(_.id == lift(id)))
-    performEffect(runIO(q)).map(_.headOption.map(_.toEvent)).orDie
+    performEffect2(runIO(q)).map(_.headOption.map(_.toEvent)).orDie
   }
 }

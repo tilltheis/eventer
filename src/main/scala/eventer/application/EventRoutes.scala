@@ -1,7 +1,7 @@
 package eventer.application
 
 import cats.syntax.semigroupk._
-import eventer.domain.event.EventRepository2
+import eventer.domain.event.EventRepository
 import eventer.domain.{EventCreationRequest, EventId, SessionUser}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.AuthMiddleware
@@ -9,7 +9,7 @@ import org.http4s.{AuthedRoutes, HttpRoutes}
 import zio.interop.catz._
 import zio.{Task, UIO}
 
-class EventRoutes(eventRepository: EventRepository2,
+class EventRoutes(eventRepository: EventRepository,
                   generateEventId: UIO[EventId],
                   authMiddleware: AuthMiddleware[Task, SessionUser])
     extends Http4sDsl[Task]
