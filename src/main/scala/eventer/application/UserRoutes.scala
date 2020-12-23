@@ -3,7 +3,7 @@ package eventer.application
 import com.typesafe.scalalogging.StrictLogging
 import eventer.domain.user.UserRepository
 import eventer.domain.{CryptoHashing, Email, RegistrationRequest, UserId}
-import eventer.infrastructure.EmailSender2
+import eventer.infrastructure.EmailSender
 import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
 import zio.interop.catz._
@@ -11,7 +11,7 @@ import zio.{Task, UIO}
 
 class UserRoutes[HashT](
     userRepository: UserRepository[HashT],
-    emailSender: EmailSender2,
+    emailSender: EmailSender,
     cryptoHashing: CryptoHashing[HashT],
     generateUserId: UIO[UserId]
 ) extends StrictLogging

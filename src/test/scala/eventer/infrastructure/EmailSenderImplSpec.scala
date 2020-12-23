@@ -9,7 +9,7 @@ import javax.mail.internet.MimeMessage
 import zio.test._
 import zio.test.Assertion._
 
-object EmailSenderImplSpec {
+object EmailSenderImplSpec extends DefaultRunnableSpec {
   val spec: TestEnvSpec = suite("EmailSenderImpl")(suite("sendEmail")(testM("works") {
     val greenMail = new GreenMail(ServerSetupTest.SMTP)
     greenMail.start()

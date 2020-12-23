@@ -14,8 +14,7 @@ object EventerSpec extends DefaultRunnableSpec {
 
   override def spec: ZSpec[TestEnvironment, Any] =
     suite("eventer")(
-      suite("domain")(CodecsSpec.spec),
-      suite("infrastructure")(EmailSenderImplSpec.spec)
+      suite("domain")(CodecsSpec.spec)
     )
 
 }

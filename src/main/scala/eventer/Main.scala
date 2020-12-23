@@ -37,9 +37,9 @@ object Main extends zio.App with StrictLogging {
         val userRepository = new DbUserRepository[BlowfishHash](dbCtx, _.hash, BlowfishHash.unsafeFromHashString)
         val eventRepository = new DbEventRepository(dbCtx)
         val emailSender =
-          new EmailSenderImpl2(config.email.host,
-                               config.email.port,
-                               PasswordAuthentication(config.email.username, config.email.password))
+          new EmailSenderImpl(config.email.host,
+                              config.email.port,
+                              PasswordAuthentication(config.email.username, config.email.password))
         val cryptoHashing = new BlowfishCryptoHashing()
 
         (for {

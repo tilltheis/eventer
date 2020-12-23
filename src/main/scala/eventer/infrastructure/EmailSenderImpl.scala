@@ -1,14 +1,18 @@
 package eventer.infrastructure
 
 import com.typesafe.scalalogging.StrictLogging
-import eventer.domain.{Email, EmailSender}
+import eventer.domain.Email
 import eventer.infrastructure.EmailSenderImpl.{Authentication, NoAuthentication, PasswordAuthentication}
 import zio.{UIO, ZIO}
 
-class EmailSenderImpl(host: String, port: Int, authentication: Authentication)
-    extends EmailSender[Any]
-    with StrictLogging {
-  override def sendEmail(email: Email): ZIO[Any, Nothing, Unit] = {
+object EmailSenderImpl {
+  sealed trait Authentication
+  case object NoAuthentication extends Authentication
+  case class PasswordAuthentication(username: String, password: String) extends Authentication
+}
+
+class EmailSenderImpl(host: String, port: Int, authentication: Authentication) extends EmailSender with StrictLogging {
+  override def sendEmail(email: Email): UIO[Unit] = {
     import courier._
     val mailer = authentication match {
       case NoAuthentication => Mailer(host, port)()
@@ -33,10 +37,4 @@ class EmailSenderImpl(host: String, port: Int, authentication: Authentication)
       .orDie
       .tap(_ => UIO(logger.info("Email sent.")))
   }
-}
-
-object EmailSenderImpl {
-  sealed trait Authentication
-  case object NoAuthentication extends Authentication
-  case class PasswordAuthentication(username: String, password: String) extends Authentication
 }

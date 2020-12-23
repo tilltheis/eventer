@@ -3,7 +3,7 @@ package eventer.application
 import eventer.TestEnvSpec
 import eventer.domain.user.InMemoryUserRepository
 import eventer.domain.TestData
-import eventer.infrastructure.{InMemoryEmailSender2, PlaintextCryptoHashing}
+import eventer.infrastructure.{InMemoryEmailSender, PlaintextCryptoHashing}
 import org.http4s._
 import org.http4s.implicits.http4sLiteralsSyntax
 import zio.interop.catz._
@@ -17,7 +17,7 @@ object UserRoutesSpec extends RoutesSpec {
       testM("inserts the new user into the repository and sends an account confirmation email to them") {
         for {
           repository <- InMemoryUserRepository.empty
-          emailSender <- InMemoryEmailSender2.empty
+          emailSender <- InMemoryEmailSender.empty
           routes = new UserRoutes(repository, emailSender, new PlaintextCryptoHashing, UIO.succeed(TestData.userId))
           request = Request[Task](Method.POST, uri"/").withEntity(TestData.registrationRequest)
           response <- routes.routes.run(request).value.someOrFailException
@@ -37,7 +37,7 @@ object UserRoutesSpec extends RoutesSpec {
       testM("returns created even if a user with the same email address already exists") {
         for {
           repository <- InMemoryUserRepository.make(Set(TestData.user))
-          emailSender <- InMemoryEmailSender2.empty
+          emailSender <- InMemoryEmailSender.empty
           routes = new UserRoutes(repository, emailSender, new PlaintextCryptoHashing, UIO.succeed(TestData.userId))
           request = Request[Task](Method.POST, uri"/").withEntity(TestData.registrationRequest)
           response <- routes.routes.run(request).value.someOrFailException
