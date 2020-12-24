@@ -1,8 +1,8 @@
 package eventer.infrastructure
 
 import io.getquill._
+import zio.Task
 import zio.blocking.Blocking
-import zio.{RIO, Task}
 
 import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
 
@@ -21,17 +21,11 @@ object DatabaseContext {
     implicit val zoneIdEncoder: MappedEncoding[ZoneId, String] = MappedEncoding(_.getId)
     implicit val zoneIdDecoder: MappedEncoding[String, ZoneId] = MappedEncoding(ZoneId.of)
 
-    def performEffect[T](io: IO[T, _]): RIO[Blocking, Result[T]] =
-      zio.blocking.blocking(RIO(performIO(io)))
-
-    def performEffect_(io: IO[_, _]): RIO[Blocking, Result[Unit]] =
-      performEffect(io).unit
-
-    def performEffect2[T](io: IO[T, _]): Task[Result[T]] =
+    def performEffect[T](io: IO[T, _]): Task[Result[T]] =
       blocking.blocking(Task(performIO(io)))
 
-    def performEffect_2(io: IO[_, _]): Task[Result[Unit]] =
-      performEffect2(io).unit
+    def performEffect_(io: IO[_, _]): Task[Result[Unit]] =
+      performEffect(io).unit
   }
 
 }

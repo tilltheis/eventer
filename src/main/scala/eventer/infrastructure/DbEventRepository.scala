@@ -9,16 +9,16 @@ class DbEventRepository(ctx: DatabaseContext.Service) extends EventRepository {
 
   override def create(event: Event): UIO[Unit] = {
     val q = quote(schema.event.insert(lift(DbEvent.fromEvent(event))))
-    performEffect_2(runIO(q)).orDie
+    performEffect_(runIO(q)).orDie
   }
 
   override val findAll: UIO[Seq[Event]] = {
     val q = quote(schema.event)
-    performEffect2(runIO(q)).map(_.map(_.toEvent)).orDie
+    performEffect(runIO(q)).map(_.map(_.toEvent)).orDie
   }
 
   override def findById(id: EventId): UIO[Option[Event]] = {
     val q = quote(schema.event.filter(_.id == lift(id)))
-    performEffect2(runIO(q)).map(_.headOption.map(_.toEvent)).orDie
+    performEffect(runIO(q)).map(_.headOption.map(_.toEvent)).orDie
   }
 }

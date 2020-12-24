@@ -18,7 +18,7 @@ class DbUserRepository[HashT](ctx: DatabaseContext.Service,
 
   override def create(user: User[HashT]): zio.IO[EmailAlreadyInUse.type, Unit] = {
     val q: ctx.Quoted[Insert[User[HashT]]] = quote(query[User[HashT]].insert(lift(user)))
-    performEffect_2(runIO(q)).catchAll {
+    performEffect_(runIO(q)).catchAll {
       case e: PSQLException if e.getSQLState == PostgresSqlState.UniqueViolation && e.getMessage.contains("email") =>
         ZIO.fail(EmailAlreadyInUse)
       case e => ZIO.die(e)
@@ -27,7 +27,7 @@ class DbUserRepository[HashT](ctx: DatabaseContext.Service,
 
   override def findByEmail(email: String): UIO[Option[User[HashT]]] = {
     val q: ctx.Quoted[EntityQuery[User[HashT]]] = quote(query[User[HashT]].filter(_.email == lift(email)))
-    performEffect2(runIO(q)).map(_.headOption).orDie
+    performEffect(runIO(q)).map(_.headOption).orDie
   }
 
 }
