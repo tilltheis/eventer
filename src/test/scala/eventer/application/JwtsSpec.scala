@@ -4,6 +4,8 @@ import eventer.application.Jwts.JwtSigningAlgorithm
 import eventer.{Base64, EventerSpec}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, parser}
+import zio.URLayer
+import zio.clock.Clock
 import zio.duration.Duration
 import zio.test.Assertion.{equalTo, isNone, isSome, not}
 import zio.test.environment.TestClock
@@ -15,7 +17,7 @@ import java.util.concurrent.TimeUnit
 object JwtsSpec extends EventerSpec {
   private val keyString = "I57lQ6u3M2SgWzjuqj+tyviRaSpBGsLxcJhprwVEonI="
   private val key = eventer.util.unsafeSecretKeyFromBase64(keyString, JwtSigningAlgorithm)
-  private val jwtsM = Jwts.live(key).build.useNow.map(_.get)
+  private val jwtsLayer: URLayer[Clock, Jwts] = Jwts.live(key)
 
   private val expiresAt = Instant.ofEpochSecond(17)
 
@@ -23,9 +25,8 @@ object JwtsSpec extends EventerSpec {
     suite("encodedJwtHeaderPayloadSignature")(
       testM("creates the correct jwt header and payload") {
         for {
-          jwts <- jwtsM
           _ <- TestClock.adjust(Duration(13, TimeUnit.SECONDS))
-          jwt <- jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
+          jwt <- Jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
           (jwtHeader, jwtPayload, _) = jwt
           jsonHeader <- Base64.decode(jwtHeader).map(parser.parse).rightOrFail(new RuntimeException)
           jsonPayload <- Base64.decode(jwtPayload).map(parser.parse).rightOrFail(new RuntimeException)
@@ -36,11 +37,9 @@ object JwtsSpec extends EventerSpec {
       },
       testM("creates a signature that is only valid for the original payload") {
         for {
-          jwts <- jwtsM
-          jwt <- jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
-          (_, _, jwtSignature) = jwt
-          otherJwt <- jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"other content"}""", expiresAt)
-          (_, _, otherJwtSignature) = otherJwt
+          (_, _, jwtSignature) <- Jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
+          (_, _, otherJwtSignature) <- Jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"other content"}""",
+                                                                                expiresAt)
         } yield assert(jwtSignature)(not(equalTo(otherJwtSignature)))
       }
     ),
@@ -48,38 +47,26 @@ object JwtsSpec extends EventerSpec {
       testM("decodes a valid jwt to its payload") {
         val content = """{"content":"content"}"""
         for {
-          jwts <- jwtsM
-          jwt <- jwts.encodeJwtIntoHeaderPayloadSignature(content, expiresAt)
-          (jwtHeader, jwtPayload, jwtSignature) = jwt
-          decodedJwtPayload <- jwts
-            .decodeJwtFromHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
-            .option
+          (jwtHeader, jwtPayload, jwtSignature) <- Jwts.encodeJwtIntoHeaderPayloadSignature(content, expiresAt)
+          decodedJwtPayload <- Jwts.decodeJwtFromHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature).option
         } yield assert(decodedJwtPayload)(isSome(equalTo(content)))
       },
       testM("fails if the signature doesn't match") {
         for {
-          jwts <- jwtsM
-          jwt <- jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
-          (jwtHeader, jwtPayload, _) = jwt
-          otherJwt <- jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content2"}""", expiresAt)
-          (_, _, otherJwtSignature) = otherJwt
-          decodedJwtPayload <- jwts
-            .decodeJwtFromHeaderPayloadSignature(jwtHeader, jwtPayload, otherJwtSignature)
-            .option
+          (jwtHeader, jwtPayload, _) <- Jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
+          (_, _, otherJwtSignature) <- Jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content2"}""", expiresAt)
+          decodedJwtPayload <- Jwts.decodeJwtFromHeaderPayloadSignature(jwtHeader, jwtPayload, otherJwtSignature).option
         } yield assert(decodedJwtPayload)(isNone)
       },
       testM("fails if the jwt is expired") {
         val duration = Duration.fromJava(java.time.Duration.ofMillis(expiresAt.toEpochMilli))
         for {
-          jwts <- jwtsM
           _ <- TestClock.adjust(duration)
-          jwt <- jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content"}""", expiresAt)
-          (jwtHeader, jwtPayload, jwtSignature) = jwt
-          decodedJwtPayload <- jwts
-            .decodeJwtFromHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
-            .option
+          (jwtHeader, jwtPayload, jwtSignature) <- Jwts.encodeJwtIntoHeaderPayloadSignature("""{"content":"content"}""",
+                                                                                            expiresAt)
+          decodedJwtPayload <- Jwts.decodeJwtFromHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature).option
         } yield assert(decodedJwtPayload)(isNone)
       }
     )
-  )
+  ).provideCustomLayer(jwtsLayer)
 }

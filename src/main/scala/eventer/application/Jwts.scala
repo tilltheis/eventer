@@ -2,12 +2,14 @@ package eventer.application
 
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtOptions}
 import zio.clock.Clock
+import zio.macros.accessible
 import zio.{IO, UIO, URLayer, ZLayer}
 
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.crypto.SecretKey
 
+@accessible
 object Jwts {
 
   final object InvalidJwtFormat
