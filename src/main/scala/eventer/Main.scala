@@ -3,6 +3,7 @@ package eventer
 import com.typesafe.scalalogging.StrictLogging
 import eventer.application._
 import eventer.domain._
+import eventer.domain.event.EventRepository
 import eventer.domain.session.SessionServiceImpl
 import eventer.domain.user.UserRepository
 import eventer.infrastructure.BlowfishCryptoHashing.BlowfishHash
@@ -33,9 +34,8 @@ object Main extends zio.App with StrictLogging {
   val jwtsLayer: RLayer[Clock with Has[Config], Jwts] = layerFromConfig(c => Jwts.live(c.server.jwtSigningKey))
 
   val eventRoutesLayer: RLayer[DatabaseContext with Jwts, Has[EventRoutes]] =
-    (for {
-      (dbCtx, jwts) <- ZIO.services[DatabaseContext.Service, Jwts.Service]
-      eventRepository = new DbEventRepository(dbCtx)
+    DbEventRepository.live ++ ZLayer.requires[Jwts] >>> (for {
+      (eventRepository, jwts) <- ZIO.services[EventRepository.Service, Jwts.Service]
     } yield new EventRoutes(eventRepository, UIO(EventId(UUID.randomUUID())), Middlewares.auth(jwts))).toLayer
 
   val sessionRoutesLayer: RLayer[DatabaseContext with Clock with Jwts with Has[Config], Has[SessionRoutes]] =

@@ -9,7 +9,7 @@ import org.http4s.{AuthedRoutes, HttpRoutes}
 import zio.interop.catz._
 import zio.{Task, UIO}
 
-class EventRoutes(eventRepository: EventRepository,
+class EventRoutes(eventRepository: EventRepository.Service,
                   generateEventId: UIO[EventId],
                   authMiddleware: AuthMiddleware[Task, SessionUser])
     extends Http4sDsl[Task]
