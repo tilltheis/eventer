@@ -9,21 +9,11 @@ import eventer.infrastructure.BlowfishCryptoHashing.BlowfishHash
 import eventer.infrastructure.EmailSenderImpl.PasswordAuthentication
 import eventer.infrastructure._
 import org.http4s.server.HttpMiddleware
-import pureconfig.ConfigSource
-import pureconfig.generic.auto._
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio._
 
 import java.util.UUID
-
-final case class ServerConfig(port: Int,
-                              jwtSigningKeyBase64: String,
-                              csrfSigningKeyBase64: String,
-                              useSecureCookies: Boolean)
-final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
-final case class EmailConfig(sender: String, host: String, port: Int, username: String, password: String)
-final case class Config(publicUrl: String, server: ServerConfig, db: DbConfig, email: EmailConfig)
 
 object Main extends zio.App with StrictLogging {
   val insertDemoUserIntoDb: URIO[Has[UserRepository[BlowfishHash]], Unit] =
@@ -37,14 +27,12 @@ object Main extends zio.App with StrictLogging {
         )).option.absorb.ignore // catch duplicate insert exceptions
     }
 
-  val configLayer: TaskLayer[Has[Config]] = UIO(ConfigSource.default.at("eventer").loadOrThrow[Config]).absorb.toLayer
-
   val jwtsLayer: RLayer[Clock with Has[Config], Has[Jwts]] = (for {
     (clock, config) <- ZIO.services[Clock.Service, Config]
     jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, JwtsImpl.JwtSigningAlgorithm)
   } yield new JwtsImpl(jwtKey, clock)).toLayer
 
-  val databaseContextLayer: RLayer[Blocking with Has[Config], DatabaseContext] =
+  val databaseContextLayer: URLayer[Blocking with Has[Config], DatabaseContext] =
     ZLayer.fromServiceManaged[Config, Blocking, Nothing, DatabaseContext.Service]((c: Config) =>
       DatabaseProvider.withMigration(c.db.quillConfigKey).map(_.get.database.get).build)
 
@@ -86,7 +74,7 @@ object Main extends zio.App with StrictLogging {
 
   val appLayer: RLayer[ZEnv, Has[Config] with Has[WebServer]] = {
     val routesLayers = eventRoutesLayer ++ sessionRoutesLayer ++ userRoutesLayer ++ csrfMiddlewareLayer
-    ZLayer.requires[ZEnv] >+> configLayer >+> (jwtsLayer ++ databaseContextLayer) >+> routesLayers >+> webServerLayer
+    ZLayer.requires[ZEnv] >+> Config.live >+> (jwtsLayer ++ databaseContextLayer) >+> routesLayers >+> webServerLayer
   }
 
   val runApp: RIO[Has[Config] with Has[WebServer], Unit] =
