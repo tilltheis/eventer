@@ -1,8 +1,9 @@
 package eventer.infrastructure
 
 import io.getquill._
-import zio.Task
+import org.flywaydb.core.Flyway
 import zio.blocking.Blocking
+import zio.{Task, UIO, URLayer, ZLayer}
 
 import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
 
@@ -26,6 +27,20 @@ object DatabaseContext {
 
     def performEffect_(io: IO[_, _]): Task[Result[Unit]] =
       performEffect(io).unit
+  }
+
+  val withMigration: URLayer[Blocking with DatabaseProvider, DatabaseContext] = {
+    ZLayer.fromServiceM[DatabaseProvider.Service, Blocking, Nothing, DatabaseContext.Service] { db =>
+      def migrate() =
+        Flyway
+          .configure()
+          .locations("classpath:migration")
+          .dataSource(db.database.get.dataSource)
+          .load()
+          .migrate()
+
+      zio.blocking.blocking(UIO(migrate())).as(db.database.get)
+    }
   }
 
 }

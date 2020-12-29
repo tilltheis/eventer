@@ -32,10 +32,6 @@ object Main extends zio.App with StrictLogging {
     jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, JwtsImpl.JwtSigningAlgorithm)
   } yield new JwtsImpl(jwtKey, clock)).toLayer
 
-  val databaseContextLayer: URLayer[Blocking with Has[Config], DatabaseContext] =
-    ZLayer.fromServiceManaged[Config, Blocking, Nothing, DatabaseContext.Service]((c: Config) =>
-      DatabaseProvider.withMigration(c.db.quillConfigKey).map(_.get.database.get).build)
-
   val eventRoutesLayer: RLayer[DatabaseContext with Has[Jwts], Has[EventRoutes]] =
     (for {
       (dbCtx, jwts) <- ZIO.services[DatabaseContext.Service, Jwts]
@@ -74,7 +70,9 @@ object Main extends zio.App with StrictLogging {
 
   val appLayer: RLayer[ZEnv, Has[Config] with Has[WebServer]] = {
     val routesLayers = eventRoutesLayer ++ sessionRoutesLayer ++ userRoutesLayer ++ csrfMiddlewareLayer
-    ZLayer.requires[ZEnv] >+> Config.live >+> (jwtsLayer ++ databaseContextLayer) >+> routesLayers >+> webServerLayer
+    val dbLayers = ZLayer.requires[Blocking] ++ DatabaseProvider.live >>> DatabaseContext.withMigration
+    val configLayers = Config.live >+> ZLayer.fromServiceMany((c: Config) => Has.allOf(c.server, c.db))
+    ZLayer.requires[ZEnv] >+> configLayers >+> jwtsLayer >+> dbLayers >+> routesLayers >+> webServerLayer
   }
 
   val runApp: RIO[Has[Config] with Has[WebServer], Unit] =

@@ -1,6 +1,8 @@
 package eventer.infrastructure
 
-import eventer.EventerSpec
+import eventer.{DbConfig, EventerSpec}
+import zio.ZLayer
+import zio.blocking.Blocking
 import zio.test.environment.TestEnvironment
 import zio.test.{TestAspect, ZSpec}
 
@@ -11,7 +13,8 @@ trait DbSpec extends EventerSpec {
   def dbSpec: ZSpec[DbEnv, Any]
 
   override final def spec: ZSpec[TestEnvironment, Any] = {
-    val layer = TestDatabaseProvider.withDroppedSchemaAndMigration("quill").map(_.get.database)
-    dbSpec.provideCustomLayer(layer) @@ TestAspect.sequential
+    val dependencies = ZLayer.requires[Blocking] ++ ZLayer.succeed(DbConfig("quill"))
+    val dbConnection = dependencies >+> DatabaseProvider.live >>> TestDatabaseContext.withDroppedSchemaAndMigration
+    dbSpec.provideCustomLayer(dbConnection) @@ TestAspect.sequential
   }
 }

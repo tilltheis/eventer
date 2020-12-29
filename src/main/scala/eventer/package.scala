@@ -6,7 +6,7 @@ package object eventer {
                                 jwtSigningKeyBase64: String,
                                 csrfSigningKeyBase64: String,
                                 useSecureCookies: Boolean)
-  final case class DbConfig(url: String, username: String, password: String, quillConfigKey: String)
+  final case class DbConfig(quillConfigKey: String)
   final case class EmailConfig(sender: String, host: String, port: Int, username: String, password: String)
   final case class Config(publicUrl: String, server: ServerConfig, db: DbConfig, email: EmailConfig)
 
