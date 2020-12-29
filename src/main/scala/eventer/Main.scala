@@ -27,20 +27,20 @@ object Main extends zio.App with StrictLogging {
         )).option.absorb.ignore // catch duplicate insert exceptions
     }
 
-  val jwtsLayer: RLayer[Clock with Has[Config], Has[Jwts]] = (for {
-    (clock, config) <- ZIO.services[Clock.Service, Config]
-    jwtKey <- util.secretKeyFromBase64(config.server.jwtSigningKeyBase64, JwtsImpl.JwtSigningAlgorithm)
-  } yield new JwtsImpl(jwtKey, clock)).toLayer
+  def layerFromConfig[R, E, A: Tag](f: Config => ZLayer[R, E, Has[A]]): ZLayer[R with Has[Config], E, Has[A]] =
+    ZLayer.fromServiceManaged[Config, R, E, A](f(_).build.map(_.get))
 
-  val eventRoutesLayer: RLayer[DatabaseContext with Has[Jwts], Has[EventRoutes]] =
+  val jwtsLayer: RLayer[Clock with Has[Config], Jwts] = layerFromConfig(c => Jwts.live(c.server.jwtSigningKey))
+
+  val eventRoutesLayer: RLayer[DatabaseContext with Jwts, Has[EventRoutes]] =
     (for {
-      (dbCtx, jwts) <- ZIO.services[DatabaseContext.Service, Jwts]
+      (dbCtx, jwts) <- ZIO.services[DatabaseContext.Service, Jwts.Service]
       eventRepository = new DbEventRepository(dbCtx)
     } yield new EventRoutes(eventRepository, UIO(EventId(UUID.randomUUID())), Middlewares.auth(jwts))).toLayer
 
-  val sessionRoutesLayer: RLayer[DatabaseContext with Clock with Has[Jwts] with Has[Config], Has[SessionRoutes]] =
+  val sessionRoutesLayer: RLayer[DatabaseContext with Clock with Jwts with Has[Config], Has[SessionRoutes]] =
     (for {
-      (clock, config, dbCtx, jwts) <- ZIO.services[Clock.Service, Config, DatabaseContext.Service, Jwts]
+      (clock, config, dbCtx, jwts) <- ZIO.services[Clock.Service, Config, DatabaseContext.Service, Jwts.Service]
       authMiddleware = Middlewares.auth(jwts)
       userRepository = new DbUserRepository[BlowfishHash](dbCtx, _.hash, BlowfishHash.unsafeFromHashString)
       sessionService = new SessionServiceImpl(userRepository, new BlowfishCryptoHashing)

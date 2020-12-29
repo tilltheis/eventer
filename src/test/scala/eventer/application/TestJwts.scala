@@ -6,7 +6,7 @@ import zio.{IO, UIO}
 
 import java.time.Instant
 
-object TestJwts extends Jwts {
+object TestJwts extends Jwts.Service {
   override def encodeJwtIntoHeaderPayloadSignature(content: String, expiresAt: Instant): UIO[(String, String, String)] =
     UIO.succeed("header", Base64.encode(content), "signature")
 

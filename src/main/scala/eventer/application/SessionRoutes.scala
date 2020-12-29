@@ -13,7 +13,7 @@ import zio.clock.Clock
 import zio.interop.catz._
 
 class SessionRoutes(clock: Clock.Service,
-                    jwts: Jwts,
+                    jwts: Jwts.Service,
                     sessionService: SessionService,
                     authMiddleware: AuthMiddleware[Task, SessionUser],
                     useSecureCookies: Boolean)

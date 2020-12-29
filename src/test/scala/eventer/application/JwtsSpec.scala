@@ -1,11 +1,9 @@
 package eventer.application
 
+import eventer.application.Jwts.JwtSigningAlgorithm
 import eventer.{Base64, EventerSpec}
-import eventer.application.JwtsImpl.JwtSigningAlgorithm
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, parser}
-import zio.ZIO
-import zio.clock.Clock
 import zio.duration.Duration
 import zio.test.Assertion.{equalTo, isNone, isSome, not}
 import zio.test.environment.TestClock
@@ -14,10 +12,10 @@ import zio.test.{assert, suite, testM}
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
-object JwtsImplSpec extends EventerSpec {
+object JwtsSpec extends EventerSpec {
   private val keyString = "I57lQ6u3M2SgWzjuqj+tyviRaSpBGsLxcJhprwVEonI="
   private val key = eventer.util.unsafeSecretKeyFromBase64(keyString, JwtSigningAlgorithm)
-  private val jwtsM = ZIO.service[Clock.Service].map(new JwtsImpl(key, _))
+  private val jwtsM = Jwts.live(key).build.useNow.map(_.get)
 
   private val expiresAt = Instant.ofEpochSecond(17)
 

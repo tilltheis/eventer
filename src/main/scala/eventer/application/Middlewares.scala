@@ -45,7 +45,7 @@ object Middlewares extends Http4sDsl[Task] with Codecs[Task] {
   // Per default Http4s returns `Unauthorized` which per spec requires a `WWW-Authenticate` header but Http4s doesn't
   // supply it. That's against the spec and that's not cool. Also, that header doesn't make sense for our form based
   // authentication and so the `Unauthorized` HTTP code is inappropriate. We use `Forbidden` instead.
-  def auth(jwts: Jwts): AuthMiddleware[Task, SessionUser] = {
+  def auth(jwts: Jwts.Service): AuthMiddleware[Task, SessionUser] = {
     def authUser: Kleisli[OptionT[Task, *], Request[Task], SessionUser] =
       Kleisli { request =>
         val sessionUserM = for {
