@@ -16,8 +16,8 @@ import zio.clock.Clock
 import java.util.UUID
 
 object Main extends zio.App with StrictLogging {
-  val insertDemoUserIntoDb: URIO[Has[UserRepository[BlowfishHash]], Unit] =
-    ZIO.service[UserRepository[BlowfishHash]].flatMap {
+  val insertDemoUserIntoDb: URIO[UserRepository[BlowfishHash], Unit] =
+    ZIO.service[UserRepository.Service[BlowfishHash]].flatMap {
       _.create(
         User(
           UserId(UUID.fromString("6f31ccde-4321-4cc9-9056-6c3cbd550cba")),
@@ -39,14 +39,24 @@ object Main extends zio.App with StrictLogging {
     (for {
       (clock, config, dbCtx, jwts) <- ZIO.services[Clock.Service, Config, DatabaseContext.Service, Jwts.Service]
       authMiddleware <- AuthMiddleware.live.build.provide(Has(jwts)).useNow.map(_.get)
-      userRepository = new DbUserRepository[BlowfishHash](dbCtx, _.hash, BlowfishHash.unsafeFromHashString)
+      userRepository <- DbUserRepository
+        .live[BlowfishHash](_.hash, BlowfishHash.unsafeFromHashString)
+        .build
+        .useNow
+        .provide(Has(dbCtx))
+        .map(_.get)
       sessionService = new SessionServiceImpl(userRepository, new BlowfishCryptoHashing)
     } yield new SessionRoutes(clock, jwts, sessionService, authMiddleware, config.server.useSecureCookies)).toLayer
 
   val userRoutesLayer: RLayer[Has[Config] with DatabaseContext, Has[UserRoutes[BlowfishHash]]] = (for {
     (config, dbCtx) <- ZIO.services[Config, DatabaseContext.Service]
-    userRepository = new DbUserRepository[BlowfishHash](dbCtx, _.hash, BlowfishHash.unsafeFromHashString)
-    _ <- insertDemoUserIntoDb.provideLayer(ZLayer.succeed(userRepository: UserRepository[BlowfishHash]))
+    userRepository <- DbUserRepository
+      .live[BlowfishHash](_.hash, BlowfishHash.unsafeFromHashString)
+      .build
+      .useNow
+      .provide(Has(dbCtx))
+      .map(_.get)
+    _ <- insertDemoUserIntoDb.provideLayer(ZLayer.succeed(userRepository))
     emailSender = new EmailSenderImpl(config.email.host,
                                       config.email.port,
                                       PasswordAuthentication(config.email.username, config.email.password))

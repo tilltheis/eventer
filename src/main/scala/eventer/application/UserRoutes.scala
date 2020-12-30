@@ -10,7 +10,7 @@ import zio.interop.catz._
 import zio.{Task, UIO}
 
 class UserRoutes[HashT](
-    userRepository: UserRepository[HashT],
+    userRepository: UserRepository.Service[HashT],
     emailSender: EmailSender,
     cryptoHashing: CryptoHashing[HashT],
     generateUserId: UIO[UserId]

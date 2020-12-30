@@ -5,12 +5,19 @@ import eventer.domain.user.UserRepository
 import eventer.domain.user.UserRepository.EmailAlreadyInUse
 import io.getquill.{EntityQuery, Insert}
 import org.postgresql.util.PSQLException
-import zio.{UIO, ZIO}
+import zio.{Tag, UIO, URLayer, ZIO, ZLayer}
 
-class DbUserRepository[HashT](ctx: DatabaseContext.Service,
-                              encodePasswordHash: HashT => String,
-                              decodePasswordHash: String => HashT)
-    extends UserRepository[HashT] {
+object DbUserRepository {
+  def live[HashT: Tag](encodePasswordHash: HashT => String,
+                       decodePasswordHash: String => HashT): URLayer[DatabaseContext, UserRepository[HashT]] =
+    ZLayer.fromService((ctx: DatabaseContext.Service) =>
+      new DbUserRepository(ctx, encodePasswordHash, decodePasswordHash))
+}
+
+private class DbUserRepository[HashT](ctx: DatabaseContext.Service,
+                                      encodePasswordHash: HashT => String,
+                                      decodePasswordHash: String => HashT)
+    extends UserRepository.Service[HashT] {
   import ctx._
 
   private implicit val passwordHashEncoder: MappedEncoding[HashT, String] = MappedEncoding(encodePasswordHash)
