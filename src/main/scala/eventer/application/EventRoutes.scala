@@ -2,17 +2,30 @@ package eventer.application
 
 import cats.syntax.semigroupk._
 import eventer.domain.event.EventRepository
-import eventer.domain.{EventCreationRequest, EventId, SessionUser}
+import eventer.domain.{EventCreationRequest, SessionUser}
 import org.http4s.dsl.Http4sDsl
-import org.http4s.server.AuthMiddleware
 import org.http4s.{AuthedRoutes, HttpRoutes}
 import zio.interop.catz._
-import zio.{Task, UIO}
+import zio.macros.accessible
+import zio.{Task, URLayer, ZLayer}
 
-class EventRoutes(eventRepository: EventRepository.Service,
-                  generateEventId: UIO[EventId],
-                  authMiddleware: AuthMiddleware[Task, SessionUser])
-    extends Http4sDsl[Task]
+@accessible
+object EventRoutes {
+  trait Service {
+    def routes: HttpRoutes[Task]
+  }
+
+  val live: URLayer[EventRepository with EventIdGenerator with AuthMiddleware, EventRoutes] =
+    ZLayer
+      .fromServices[EventRepository.Service, EventIdGenerator.Service, AuthMiddleware.Service, Service](
+        new EventRoutesImpl(_, _, _))
+}
+
+private class EventRoutesImpl(eventRepository: EventRepository.Service,
+                              generateEventId: EventIdGenerator.Service,
+                              authMiddleware: AuthMiddleware.Service)
+    extends EventRoutes.Service
+    with Http4sDsl[Task]
     with Codecs[Task] {
 
   private val publicRoutes = HttpRoutes.of[Task] {
@@ -31,5 +44,5 @@ class EventRoutes(eventRepository: EventRepository.Service,
       } yield response
   }
 
-  val routes: HttpRoutes[Task] = publicRoutes <+> authMiddleware(privateRoutes)
+  override val routes: HttpRoutes[Task] = publicRoutes <+> authMiddleware(privateRoutes)
 }

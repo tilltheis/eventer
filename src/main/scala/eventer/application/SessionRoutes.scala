@@ -1,13 +1,12 @@
 package eventer.application
 
 import cats.syntax.semigroupk._
-import eventer.application.Middlewares.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
+import eventer.application.AuthMiddleware.{JwtHeaderPayloadCookieName, JwtSignatureCookieName}
 import eventer.domain.session.SessionService
 import eventer.domain.{LoginRequest, SessionUser}
 import io.circe.syntax.EncoderOps
 import org.http4s._
 import org.http4s.dsl.Http4sDsl
-import org.http4s.server.AuthMiddleware
 import zio.Task
 import zio.clock.Clock
 import zio.interop.catz._
@@ -15,7 +14,7 @@ import zio.interop.catz._
 class SessionRoutes(clock: Clock.Service,
                     jwts: Jwts.Service,
                     sessionService: SessionService,
-                    authMiddleware: AuthMiddleware[Task, SessionUser],
+                    authMiddleware: AuthMiddleware.Service,
                     useSecureCookies: Boolean)
     extends Http4sDsl[Task]
     with Codecs[Task] {

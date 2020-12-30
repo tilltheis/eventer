@@ -2,7 +2,7 @@ package eventer.application
 
 import eventer.Base64
 import eventer.application.Jwts.InvalidJwtFormat
-import zio.{IO, UIO}
+import zio.{IO, UIO, ULayer, ZLayer}
 
 import java.time.Instant
 
@@ -14,4 +14,6 @@ object TestJwts extends Jwts.Service {
                                                    payload: String,
                                                    signature: String): IO[InvalidJwtFormat.type, String] =
     Base64.decode(payload).orElseFail(InvalidJwtFormat)
+
+  val live: ULayer[Jwts] = ZLayer.succeed(this)
 }

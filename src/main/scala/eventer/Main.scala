@@ -3,16 +3,15 @@ package eventer
 import com.typesafe.scalalogging.StrictLogging
 import eventer.application._
 import eventer.domain._
-import eventer.domain.event.EventRepository
 import eventer.domain.session.SessionServiceImpl
 import eventer.domain.user.UserRepository
 import eventer.infrastructure.BlowfishCryptoHashing.BlowfishHash
 import eventer.infrastructure.EmailSenderImpl.PasswordAuthentication
 import eventer.infrastructure._
 import org.http4s.server.HttpMiddleware
+import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio._
 
 import java.util.UUID
 
@@ -33,15 +32,13 @@ object Main extends zio.App with StrictLogging {
 
   val jwtsLayer: RLayer[Clock with Has[Config], Jwts] = layerFromConfig(c => Jwts.live(c.server.jwtSigningKey))
 
-  val eventRoutesLayer: RLayer[DatabaseContext with Jwts, Has[EventRoutes]] =
-    DbEventRepository.live ++ ZLayer.requires[Jwts] >>> (for {
-      (eventRepository, jwts) <- ZIO.services[EventRepository.Service, Jwts.Service]
-    } yield new EventRoutes(eventRepository, UIO(EventId(UUID.randomUUID())), Middlewares.auth(jwts))).toLayer
+  val eventRoutesLayer: RLayer[DatabaseContext with Jwts, EventRoutes] =
+    DbEventRepository.live ++ EventIdGenerator.live ++ AuthMiddleware.live >>> EventRoutes.live
 
   val sessionRoutesLayer: RLayer[DatabaseContext with Clock with Jwts with Has[Config], Has[SessionRoutes]] =
     (for {
       (clock, config, dbCtx, jwts) <- ZIO.services[Clock.Service, Config, DatabaseContext.Service, Jwts.Service]
-      authMiddleware = Middlewares.auth(jwts)
+      authMiddleware <- AuthMiddleware.live.build.provide(Has(jwts)).useNow.map(_.get)
       userRepository = new DbUserRepository[BlowfishHash](dbCtx, _.hash, BlowfishHash.unsafeFromHashString)
       sessionService = new SessionServiceImpl(userRepository, new BlowfishCryptoHashing)
     } yield new SessionRoutes(clock, jwts, sessionService, authMiddleware, config.server.useSecureCookies)).toLayer
@@ -61,10 +58,10 @@ object Main extends zio.App with StrictLogging {
     key <- util.secretKeyFromBase64(config.server.csrfSigningKeyBase64, Middlewares.CsrfSigningAlgorithm)
   } yield Middlewares.csrf(key, config.server.useSecureCookies)).toLayer
 
-  val webServerLayer: URLayer[
-    Has[EventRoutes] with Has[SessionRoutes] with Has[UserRoutes[BlowfishHash]] with Has[HttpMiddleware[Task]],
-    Has[WebServer]] =
-    ZLayer.fromServices[EventRoutes, SessionRoutes, UserRoutes[BlowfishHash], HttpMiddleware[Task], WebServer](
+  val webServerLayer
+    : URLayer[EventRoutes with Has[SessionRoutes] with Has[UserRoutes[BlowfishHash]] with Has[HttpMiddleware[Task]],
+              Has[WebServer]] =
+    ZLayer.fromServices[EventRoutes.Service, SessionRoutes, UserRoutes[BlowfishHash], HttpMiddleware[Task], WebServer](
       (eventRoutes, sessionRoutes, userRoutes, csrfMiddleware) =>
         new WebServer(eventRoutes.routes, sessionRoutes.routes, userRoutes.routes, csrfMiddleware))
 

@@ -1,15 +1,13 @@
 package eventer.application
 
-import cats.data.{Kleisli, OptionT}
-import eventer.domain.SessionUser
-import org.http4s.Request
+import cats.data.OptionT
 import org.http4s.dsl.Http4sDsl
+import org.http4s.server.HttpMiddleware
 import org.http4s.server.middleware.CSRF
 import org.http4s.server.middleware.CSRF.CSRFBuilder
-import org.http4s.server.{AuthMiddleware, HttpMiddleware}
 import org.http4s.util.CaseInsensitiveString
+import zio.Task
 import zio.interop.catz._
-import zio.{Task, UIO}
 
 import javax.crypto.SecretKey
 
@@ -18,9 +16,6 @@ object Middlewares extends Http4sDsl[Task] with Codecs[Task] {
 
   private[application] val CsrfTokenCookieName = "csrf-token"
   private[application] val CsrfTokenHeaderName = "X-Csrf-Token"
-
-  private[application] val JwtSignatureCookieName = "jwt-signature"
-  private[application] val JwtHeaderPayloadCookieName = "jwt-header.payload"
 
   // Having CSRF is more like an additional safety net because we're only planning to have an SPA and that is
   // practically safe against CSRF attacks. The CSRF attack vector only opens when we allow
@@ -40,26 +35,5 @@ object Middlewares extends Http4sDsl[Task] with Codecs[Task] {
       .withCookieSecure(useSecureCookies)
       .build
       .validate()
-  }
-
-  // Per default Http4s returns `Unauthorized` which per spec requires a `WWW-Authenticate` header but Http4s doesn't
-  // supply it. That's against the spec and that's not cool. Also, that header doesn't make sense for our form based
-  // authentication and so the `Unauthorized` HTTP code is inappropriate. We use `Forbidden` instead.
-  def auth(jwts: Jwts.Service): AuthMiddleware[Task, SessionUser] = {
-    def authUser: Kleisli[OptionT[Task, *], Request[Task], SessionUser] =
-      Kleisli { request =>
-        val sessionUserM = for {
-          jwtHeaderPayload <- UIO(request.cookies.find(_.name == JwtHeaderPayloadCookieName).map(_.content)).get
-          jwtSignature <- UIO(request.cookies.find(_.name == JwtSignatureCookieName).map(_.content)).get
-          jwtHeaderAndPayload <- UIO(Some(jwtHeaderPayload).map(_.split('.')).collect { case Array(x, y) => (x, y) })
-            .get
-          (jwtHeader, jwtPayload) = jwtHeaderAndPayload
-          contentJson <- jwts.decodeJwtFromHeaderPayloadSignature(jwtHeader, jwtPayload, jwtSignature)
-          sessionUser <- UIO.succeed(io.circe.parser.decode[SessionUser](contentJson).toOption).get
-        } yield sessionUser
-        OptionT(sessionUserM.option)
-      }
-
-    AuthMiddleware.noSpider(authUser, _ => Forbidden())
   }
 }
