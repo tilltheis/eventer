@@ -1,14 +1,24 @@
 package eventer.infrastructure
 
 import com.typesafe.scalalogging.StrictLogging
+import eventer.Config
 import eventer.domain.Email
 import eventer.infrastructure.EmailSenderImpl.{Authentication, NoAuthentication, PasswordAuthentication}
-import zio.{UIO, ZIO}
+import zio._
 
 object EmailSenderImpl {
   sealed trait Authentication
   case object NoAuthentication extends Authentication
   case class PasswordAuthentication(username: String, password: String) extends Authentication
+
+  def live(host: String, port: Int, authentication: Authentication): ULayer[Has[EmailSender]] =
+    ZLayer.succeed(new EmailSenderImpl(host, port, authentication))
+
+  val liveFromConfig: URLayer[Has[Config], Has[EmailSender]] = ZLayer.fromService(
+    (config: Config) =>
+      new EmailSenderImpl(config.email.host,
+                          config.email.port,
+                          PasswordAuthentication(config.email.username, config.email.password)))
 }
 
 class EmailSenderImpl(host: String, port: Int, authentication: Authentication) extends EmailSender with StrictLogging {

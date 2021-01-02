@@ -7,7 +7,19 @@ import eventer.infrastructure.EmailSender
 import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
 import zio.interop.catz._
-import zio.{Task, UIO}
+import zio.{Has, Tag, Task, UIO, URLayer, ZLayer}
+
+object UserRoutes {
+  def live[HashT: Tag]
+    : URLayer[UserRepository[HashT] with Has[EmailSender] with Has[CryptoHashing[HashT]] with UserIdGenerator,
+              Has[UserRoutes[HashT]]] =
+    ZLayer.fromServices[UserRepository.Service[HashT],
+                        EmailSender,
+                        CryptoHashing[HashT],
+                        UserIdGenerator.Service,
+                        UserRoutes[HashT]]((userRepository, emailSender, cryptoHashing, userIdGenerator) =>
+      new UserRoutes[HashT](userRepository, emailSender, cryptoHashing, userIdGenerator))
+}
 
 class UserRoutes[HashT](
     userRepository: UserRepository.Service[HashT],

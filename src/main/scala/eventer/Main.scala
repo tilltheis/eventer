@@ -6,7 +6,6 @@ import eventer.domain._
 import eventer.domain.session.SessionServiceImpl
 import eventer.domain.user.UserRepository
 import eventer.infrastructure.BlowfishCryptoHashing.BlowfishHash
-import eventer.infrastructure.EmailSenderImpl.PasswordAuthentication
 import eventer.infrastructure._
 import org.http4s.server.HttpMiddleware
 import zio._
@@ -16,16 +15,16 @@ import zio.clock.Clock
 import java.util.UUID
 
 object Main extends zio.App with StrictLogging {
-  val insertDemoUserIntoDb: URIO[UserRepository[BlowfishHash], Unit] =
-    ZIO.service[UserRepository.Service[BlowfishHash]].flatMap {
-      _.create(
-        User(
-          UserId(UUID.fromString("6f31ccde-4321-4cc9-9056-6c3cbd550cba")),
-          "Till",
-          "example@example.org",
-          BlowfishHash.unsafeFromHashString("$2a$10$d.vQEHwPIqtSYWQOMtg7LuZgTOx1R/2sOLnqCUkpixkXJ1paUhEIm")
-        )).option.absorb.ignore // catch duplicate insert exceptions
-    }
+  // create example user with email "example@example.org" and password "password"
+  def insertDemoUserIntoDb(userRepository: UserRepository.Service[BlowfishHash]): UIO[Unit] = {
+    val demoUser = User(
+      UserId(UUID.fromString("6f31ccde-4321-4cc9-9056-6c3cbd550cba")),
+      "Till",
+      "example@example.org",
+      BlowfishHash.unsafeFromHashString("$2a$10$d.vQEHwPIqtSYWQOMtg7LuZgTOx1R/2sOLnqCUkpixkXJ1paUhEIm")
+    )
+    userRepository.create(demoUser).option.absorb.ignore // catch duplicate insert exceptions
+  }
 
   def layerFromConfig[R, E, A: Tag](f: Config => ZLayer[R, E, Has[A]]): ZLayer[R with Has[Config], E, Has[A]] =
     ZLayer.fromServiceManaged[Config, R, E, A](f(_).build.map(_.get))
@@ -48,20 +47,11 @@ object Main extends zio.App with StrictLogging {
       sessionService = new SessionServiceImpl(userRepository, new BlowfishCryptoHashing)
     } yield new SessionRoutes(clock, jwts, sessionService, authMiddleware, config.server.useSecureCookies)).toLayer
 
-  val userRoutesLayer: RLayer[Has[Config] with DatabaseContext, Has[UserRoutes[BlowfishHash]]] = (for {
-    (config, dbCtx) <- ZIO.services[Config, DatabaseContext.Service]
-    userRepository <- DbUserRepository
+  val userRoutesLayer: RLayer[Has[Config] with DatabaseContext, Has[UserRoutes[BlowfishHash]]] =
+    DbUserRepository
       .live[BlowfishHash](_.hash, BlowfishHash.unsafeFromHashString)
-      .build
-      .useNow
-      .provide(Has(dbCtx))
-      .map(_.get)
-    _ <- insertDemoUserIntoDb.provideLayer(ZLayer.succeed(userRepository))
-    emailSender = new EmailSenderImpl(config.email.host,
-                                      config.email.port,
-                                      PasswordAuthentication(config.email.username, config.email.password))
-  } yield
-    new UserRoutes(userRepository, emailSender, new BlowfishCryptoHashing, UIO(UserId(UUID.randomUUID())))).toLayer
+      .tap(repo => insertDemoUserIntoDb(repo.get)) ++
+      EmailSenderImpl.liveFromConfig ++ BlowfishCryptoHashing.live ++ UserIdGenerator.live >>> UserRoutes.live
 
   val csrfMiddlewareLayer: RLayer[Has[Config], Has[HttpMiddleware[Task]]] = (for {
     config <- ZIO.service[Config]

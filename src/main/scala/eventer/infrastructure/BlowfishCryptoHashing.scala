@@ -3,7 +3,7 @@ package eventer.infrastructure
 import eventer.domain.CryptoHashing
 import eventer.infrastructure.BlowfishCryptoHashing.BlowfishHash
 import org.mindrot.jbcrypt.BCrypt
-import zio.UIO
+import zio.{Has, UIO, ULayer, ZLayer}
 
 object BlowfishCryptoHashing {
   final case class BlowfishHash private (hash: String) extends AnyVal {
@@ -18,6 +18,8 @@ object BlowfishCryptoHashing {
       if (hash.matches("""\$2a\$\d\d\$.{53}""")) BlowfishHash(hash)
       else throw new IllegalArgumentException(s"Hash '$hash' is not a valid Blowfish hash.")
   }
+
+  val live: ULayer[Has[CryptoHashing[BlowfishHash]]] = ZLayer.succeed(new BlowfishCryptoHashing)
 }
 
 class BlowfishCryptoHashing extends CryptoHashing[BlowfishHash] {
