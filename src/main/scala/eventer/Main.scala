@@ -31,26 +31,27 @@ object Main extends zio.App with StrictLogging {
 
   val jwtsLayer: RLayer[Clock with Has[Config], Jwts] = layerFromConfig(c => Jwts.live(c.server.jwtSigningKey))
 
+  val blowfishHashStringCodecLayer: ULayer[Has[DbUserRepository.HashStringCodec[BlowfishHash]]] =
+    ZLayer.succeed(DbUserRepository.HashStringCodec[BlowfishHash](_.hash, BlowfishHash.unsafeFromHashString))
+
   val eventRoutesLayer: RLayer[DatabaseContext with Jwts, EventRoutes] =
     DbEventRepository.live ++ EventIdGenerator.live ++ AuthMiddleware.live >>> EventRoutes.live
+
+  val userRepositoryLayer: URLayer[DatabaseContext, UserRepository[BlowfishHash]] =
+    (ZLayer.requires[DatabaseContext] ++ blowfishHashStringCodecLayer) >>> DbUserRepository
+      .live[BlowfishHash]
+      .tap(repo => insertDemoUserIntoDb(repo.get))
 
   val sessionRoutesLayer: RLayer[DatabaseContext with Clock with Jwts with Has[Config], Has[SessionRoutes]] =
     (for {
       (clock, config, dbCtx, jwts) <- ZIO.services[Clock.Service, Config, DatabaseContext.Service, Jwts.Service]
       authMiddleware <- AuthMiddleware.live.build.provide(Has(jwts)).useNow.map(_.get)
-      userRepository <- DbUserRepository
-        .live[BlowfishHash](_.hash, BlowfishHash.unsafeFromHashString)
-        .build
-        .useNow
-        .provide(Has(dbCtx))
-        .map(_.get)
+      userRepository <- userRepositoryLayer.build.useNow.provide(Has(dbCtx)).map(_.get)
       sessionService = new SessionServiceImpl(userRepository, new BlowfishCryptoHashing)
     } yield new SessionRoutes(clock, jwts, sessionService, authMiddleware, config.server.useSecureCookies)).toLayer
 
   val userRoutesLayer: RLayer[Has[Config] with DatabaseContext, Has[UserRoutes[BlowfishHash]]] =
-    DbUserRepository
-      .live[BlowfishHash](_.hash, BlowfishHash.unsafeFromHashString)
-      .tap(repo => insertDemoUserIntoDb(repo.get)) ++
+    userRepositoryLayer ++
       EmailSenderImpl.liveFromConfig ++ BlowfishCryptoHashing.live ++ UserIdGenerator.live >>> UserRoutes.live
 
   val csrfMiddlewareLayer: RLayer[Has[Config], Has[HttpMiddleware[Task]]] = (for {
